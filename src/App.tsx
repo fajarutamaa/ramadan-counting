@@ -1,9 +1,26 @@
 "use client"
-
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+
+
+interface HijriData {
+    hijri: {
+        month: {
+            number: number
+        }
+        day: string
+        year: string
+    }
+    gregorian: {
+        date: string
+    }
+}
+
+interface ApiResponse {
+    data: HijriData[]
+}
 
 export default function RamadanCountdown() {
     const [ramadanDate, setRamadanDate] = useState<Date | null>(null)
@@ -32,47 +49,52 @@ export default function RamadanCountdown() {
         )
     }, [])
 
-    useEffect(() => {
-        async function getRamadanDate() {
-            let found: Date | null = null
-            const nextYear = new Date().getFullYear() + 1
-
-            try {
-                for (let month = 1; month <= 12; month++) {
-                    const res = await fetch(
-                        `${baseUrl}/gToHCalendar/${month}/${nextYear}?latitude=${coords?.lat}&longitude=${coords?.lon}&method=2`
-                    );
-                    const data = await res.json()
-
-                    const ramadanStart = data.data.find((d: any) => d.hijri.month.number === 9 && d.hijri.day === "1")
-
-                    if (ramadanStart) {
-                        const [day, mon, year] = ramadanStart.gregorian.date.split("-")
-                        found = new Date(`${year}-${mon}-${day}T00:00:00+07:00`)
-                        setHijriYear(ramadanStart.hijri.year)
-                        break
-                    }
+    const getRamadanDate = useCallback(async () => {
+        if (!coords) return
+        
+        let found: Date | null = null
+        const nextYear = new Date().getFullYear() + 1
+        
+        try {
+            for (let month = 1; month <= 12; month++) {
+                const res = await fetch(
+                    `${baseUrl}/gToHCalendar/${month}/${nextYear}?latitude=${coords.lat}&longitude=${coords.lon}&method=2`
+                );
+                const data: ApiResponse = await res.json()
+                
+                const ramadanStart = data.data.find((d: HijriData) => d.hijri.month.number === 9 && d.hijri.day === "1")
+                
+                if (ramadanStart) {
+                    const [day, mon, year] = ramadanStart.gregorian.date.split("-")
+                    found = new Date(`${year}-${mon}-${day}T00:00:00+07:00`)
+                    setHijriYear(ramadanStart.hijri.year)
+                    break
                 }
-            } catch (e) {
-                console.error("Gagal fetch tanggal Ramadan:", e)
             }
-            if (!found) {
-                found = new Date(`${nextYear}-03-01T00:00:00+07:00`)
-            }
-
-            setRamadanDate(found)
+        } catch (e) {
+            console.error("Gagal fetch tanggal Ramadan:", e)
         }
+        
+        if (!found) {
+            found = new Date(`${nextYear}-03-01T00:00:00+07:00`)
+        }
+        
+        setRamadanDate(found)
+    }, [coords, baseUrl]) 
 
-        getRamadanDate()
-    }, [])
+    useEffect(() => {
+        if (coords) {
+            getRamadanDate()
+        }
+    }, [coords, getRamadanDate])
 
     useEffect(() => {
         if (!ramadanDate) return
-
+        
         const timer = setInterval(() => {
             const now = new Date().getTime()
             const distance = ramadanDate.getTime() - now
-
+            
             if (distance > 0) {
                 setTimeLeft({
                     days: Math.floor(distance / (1000 * 60 * 60 * 24)),
@@ -82,7 +104,7 @@ export default function RamadanCountdown() {
                 })
             }
         }, 1000)
-
+        
         return () => clearInterval(timer)
     }, [ramadanDate])
 
@@ -107,13 +129,11 @@ export default function RamadanCountdown() {
                         </p>
                     )}
                 </div>
-
                 <Card className="bg-white dark:bg-slate-800 border-0 shadow-2xl">
                     <CardHeader className="text-center pb-4">
                         <CardTitle className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Countdown Ramadan</CardTitle>
                         <Separator className="mt-4" />
                     </CardHeader>
-
                     <CardContent className="pt-6">
                         {!ramadanDate ? (
                             <div className="text-center py-8">
@@ -133,7 +153,6 @@ export default function RamadanCountdown() {
                                             Days
                                         </Badge>
                                     </div>
-
                                     <div className="text-center">
                                         <div className="bg-gradient-to-r from-teal-600 to-teal-700 rounded-2xl p-6 mb-3 shadow-lg">
                                             <div className="text-3xl md:text-4xl font-bold text-white">
@@ -144,10 +163,9 @@ export default function RamadanCountdown() {
                                             Hours
                                         </Badge>
                                     </div>
-
                                     <div className="text-center">
                                         <div className="bg-gradient-to-r from-teal-600 to-teal-700 rounded-2xl p-6 mb-3 shadow-lg">
-                                        <div className="text-3xl md:text-4xl font-bold text-white">
+                                            <div className="text-3xl md:text-4xl font-bold text-white">
                                                 {timeLeft.minutes.toString().padStart(2, "0")}
                                             </div>
                                         </div>
@@ -155,7 +173,6 @@ export default function RamadanCountdown() {
                                             Minutes
                                         </Badge>
                                     </div>
-
                                     <div className="text-center">
                                         <div className="bg-gradient-to-r from-teal-600 to-teal-700 rounded-2xl p-6 mb-3 shadow-lg">
                                             <div className="text-3xl md:text-4xl font-bold text-white">
@@ -167,7 +184,6 @@ export default function RamadanCountdown() {
                                         </Badge>
                                     </div>
                                 </div>
-
                                 <div className="text-center">
                                     <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-slate-700 dark:to-slate-600 rounded-xl p-4">
                                         <p className="text-slate-400 dark:text-slate-500 font-medium">
