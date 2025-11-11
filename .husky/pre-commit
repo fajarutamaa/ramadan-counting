@@ -1,3 +1,2 @@
-npx husky add .husky/pre-commit "bunx --bun lint-staged"
+echo "bunx --bun lint-staged" > .husky/pre-commit
 chmod +x .husky/pre-commit
-
