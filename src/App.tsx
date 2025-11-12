@@ -1,206 +1,28 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggleDropdown } from "@/components/ThemeToggle";
-
-interface HijriData {
-  hijri: {
-    month: {
-      number: number;
-    };
-    day: string;
-    year: string;
-  };
-  gregorian: {
-    date: string;
-  };
-}
-
-interface WeatherData {
-  temperature: number;
-  weatherCode: number;
-  windSpeed: number;
-  humidity: number;
-  visibility: number;
-  location: string;
-  loading: boolean;
-  error: string | null;
-}
-
-interface ApiResponse {
-  data: HijriData[];
-}
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { useWeather } from "@/hooks/useWeather";
+import { useRamadanDate } from "@/hooks/useRamadanDate";
+import { useCountdown } from "@/hooks/useCountdown";
 
 export default function RamadanCountdown() {
-  const [ramadanDate, setRamadanDate] = useState<Date | null>(null);
-  const [timeLeft, setTimeLeft] = useState({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-  });
-  const [hijriYear, setHijriYear] = useState<string>("");
-  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(
-    null,
-  );
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
   const weatherBaseUrl = import.meta.env.VITE_API_WEATHER_URL;
   const locationBaseUrl = import.meta.env.VITE_API_LOCATION_URL;
 
-  const [weather, setWeather] = useState<WeatherData>({
-    temperature: 0,
-    weatherCode: 0,
-    windSpeed: 0,
-    humidity: 0,
-    visibility: 0,
-    location: "",
-    loading: true,
-    error: null,
-  });
-
-  useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setCoords({
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude,
-        });
-      },
-      () => {
-        console.error("Failed fetch location");
-        setCoords({ lat: -6.2088, lon: 106.8456 });
-      },
-    );
-  }, []);
-
-  useEffect(() => {
-    const fetchWeather = async () => {
-      try {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            async (position) => {
-              const { latitude, longitude } = position.coords;
-
-              const response = await fetch(
-                `${weatherBaseUrl}/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m,visibility&timezone=auto`,
-              );
-              const data = await response.json();
-              const current = data.current;
-
-              try {
-                const geoResponse = await fetch(
-                  `${locationBaseUrl}/reverse?format=json&lat=${latitude}&lon=${longitude}`,
-                );
-                const geoData = await geoResponse.json();
-                const city =
-                  geoData.address?.city ||
-                  geoData.address?.town ||
-                  "Your location";
-
-                setWeather({
-                  temperature: Math.round(current.temperature_2m),
-                  weatherCode: current.weather_code,
-                  windSpeed: Math.round(current.wind_speed_10m),
-                  humidity: current.relative_humidity_2m,
-                  visibility: Math.round(current.visibility / 1000),
-                  location: city,
-                  loading: false,
-                  error: null,
-                });
-              } catch {
-                setWeather((prev) => ({
-                  ...prev,
-                  location: "Your location",
-                  loading: false,
-                }));
-              }
-            },
-            () => {
-              setWeather((prev) => ({
-                ...prev,
-                location: "Jakarta",
-                error: "Using default location",
-                loading: false,
-              }));
-            },
-          );
-        }
-      } catch {
-        setWeather((prev) => ({
-          ...prev,
-          loading: false,
-          error: "Failed fetch data weather",
-        }));
-      }
-    };
-
-    fetchWeather();
-  }, [weatherBaseUrl, locationBaseUrl]);
-
-  const getRamadanDate = useCallback(async () => {
-    if (!coords) return;
-
-    let found: Date | null = null;
-    const nextYear = new Date().getFullYear() + 1;
-
-    try {
-      for (let month = 1; month <= 12; month++) {
-        const res = await fetch(
-          `${baseUrl}/gToHCalendar/${month}/${nextYear}?latitude=${coords.lat}&longitude=${coords.lon}&method=2`,
-        );
-        const data: ApiResponse = await res.json();
-
-        const ramadanStart = data.data.find(
-          (d: HijriData) => d.hijri.month.number === 9 && d.hijri.day === "1",
-        );
-
-        if (ramadanStart) {
-          const [day, mon, year] = ramadanStart.gregorian.date.split("-");
-          found = new Date(`${year}-${mon}-${day}T00:00:00+07:00`);
-          setHijriYear(ramadanStart.hijri.year);
-          break;
-        }
-      }
-    } catch (e) {
-      console.error("Failed fetch Ramadan:", e);
-    }
-
-    if (!found) {
-      found = new Date(`${nextYear}-03-01T00:00:00+07:00`);
-    }
-
-    setRamadanDate(found);
-  }, [coords, baseUrl]);
-
-  useEffect(() => {
-    if (coords) {
-      getRamadanDate();
-    }
-  }, [coords, getRamadanDate]);
-
-  useEffect(() => {
-    if (!ramadanDate) return;
-
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-      const distance = ramadanDate.getTime() - now;
-
-      if (distance > 0) {
-        setTimeLeft({
-          days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-          hours: Math.floor(
-            (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
-          ),
-          minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-          seconds: Math.floor((distance % (1000 * 60)) / 1000),
-        });
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [ramadanDate]);
+  const coords = useGeolocation();
+  const weather = useWeather(
+    coords.coords,
+    weatherBaseUrl,
+    locationBaseUrl,
+    90000,
+  );
+  const { ramadanDate, hijriYear } = useRamadanDate(coords.coords, baseUrl);
+  const timeLeft = useCountdown(ramadanDate);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
