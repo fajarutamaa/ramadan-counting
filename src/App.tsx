@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { ThemeToggleDropdown } from "@/components/ThemeToggle";
 
 interface HijriData {
   hijri: {
@@ -203,6 +204,9 @@ export default function RamadanCountdown() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggleDropdown />
+      </div>
       <div className="w-full max-w-2xl">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
