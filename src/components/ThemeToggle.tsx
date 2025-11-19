@@ -26,11 +26,14 @@ export function ThemeToggleDropdown() {
             "bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800/40",
             "text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white",
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/10 dark:focus-visible:ring-white/20",
+            // Mobile: show only icon, Desktop: show icon + text
+            "sm:px-3 px-2",
           )}
+          aria-label={`Theme: ${CurrentLabel}`}
         >
           <CurrentIcon className="h-4 w-4" />
-          <span>{CurrentLabel}</span>
-          <ChevronDown className="h-3 w-3 opacity-60" />
+          <span className="hidden sm:inline">{CurrentLabel}</span>
+          <ChevronDown className="h-3 w-3 opacity-60 hidden sm:inline" />
         </button>
       </DropdownMenu.Trigger>
 
