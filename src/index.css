@@ -74,6 +74,18 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Custom Emerald/Teal palette */
+  --color-emerald-50: oklch(0.98 0.02 160);
+  --color-emerald-100: oklch(0.95 0.04 160);
+  --color-emerald-400: oklch(0.72 0.12 165);
+  --color-emerald-500: oklch(0.65 0.14 165);
+  --color-emerald-600: oklch(0.58 0.13 165);
+
+  /* Soft sage accents */
+  --color-sage-50: oklch(0.97 0.02 140);
+  --color-sage-100: oklch(0.93 0.04 140);
+  --color-sage-200: oklch(0.88 0.06 140);
 }
 
 .dark {
@@ -108,6 +120,11 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Muted emerald for dark mode */
+  --color-emerald-400: oklch(0.68 0.11 165);
+  --color-emerald-500: oklch(0.62 0.12 165);
+  --color-emerald-600: oklch(0.55 0.11 165);
 }
 
 @layer base {
@@ -122,10 +139,19 @@
 /* Custom animations */
 @keyframes shimmer {
   0% {
-    background-position: -200% 0;
+    background-position: -200% center;
   }
   100% {
-    background-position: 200% 0;
+    background-position: 200% center;
+  }
+}
+
+@keyframes shimmer-skeleton {
+  0% {
+    background-position: -100% 0;
+  }
+  100% {
+    background-position: 100% 0;
   }
 }
 
@@ -145,19 +171,57 @@
     opacity: 1;
   }
   50% {
-    opacity: 0.5;
+    opacity: 0.8;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
 .animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
   background-size: 200% 100%;
   animation: shimmer 2s linear infinite;
 }
 
+.animate-shimmer-skeleton {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-skeleton 2s ease-in-out infinite;
+}
+
 .animate-float {
-  animation: float 3s ease-in-out infinite;
+  animation: float 4s ease-in-out infinite;
 }
 
 .animate-pulse-slow {
-  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-in;
+}
+
+/* Smooth transitions */
+* {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
 }

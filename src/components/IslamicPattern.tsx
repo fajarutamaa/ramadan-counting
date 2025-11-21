@@ -2,13 +2,13 @@ import { motion } from "framer-motion";
 
 export function IslamicPattern() {
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-5 dark:opacity-10">
+    <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-[0.03] dark:opacity-[0.06]">
       {/* Top left pattern */}
       <motion.svg
-        className="absolute -top-20 -left-20 w-64 h-64 text-teal-600"
+        className="absolute -top-20 -left-20 w-64 h-64 text-emerald-600 dark:text-emerald-500"
         initial={{ opacity: 0, rotate: 0 }}
-        animate={{ opacity: 0.3, rotate: 360 }}
-        transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+        animate={{ opacity: 0.4, rotate: 360 }}
+        transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
         viewBox="0 0 200 200"
         fill="currentColor"
       >
@@ -31,10 +31,10 @@ export function IslamicPattern() {
 
       {/* Bottom right pattern */}
       <motion.svg
-        className="absolute -bottom-20 -right-20 w-64 h-64 text-teal-600"
+        className="absolute -bottom-20 -right-20 w-64 h-64 text-emerald-600 dark:text-emerald-500"
         initial={{ opacity: 0, rotate: 0 }}
-        animate={{ opacity: 0.3, rotate: -360 }}
-        transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+        animate={{ opacity: 0.4, rotate: -360 }}
+        transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
         viewBox="0 0 200 200"
         fill="currentColor"
       >
@@ -53,10 +53,15 @@ export function IslamicPattern() {
 
       {/* Center decorative star */}
       <motion.svg
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 text-teal-600"
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 0.2, scale: 1 }}
-        transition={{ duration: 3, repeat: Infinity, repeatType: "reverse" }}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 text-emerald-600 dark:text-emerald-500"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 0.25, scale: 1 }}
+        transition={{
+          duration: 4,
+          repeat: Infinity,
+          repeatType: "reverse",
+          ease: "easeInOut",
+        }}
         viewBox="0 0 200 200"
         fill="none"
         stroke="currentColor"

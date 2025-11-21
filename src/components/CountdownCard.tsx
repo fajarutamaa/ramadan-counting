@@ -38,12 +38,13 @@ export function CountdownCard({ value, label, index }: CountdownCardProps) {
       }}
     >
       <motion.div
-        className="relative bg-gradient-to-br from-teal-500 via-teal-600 to-teal-700 rounded-2xl p-6 mb-3 shadow-lg overflow-hidden"
+        className="relative bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 dark:from-emerald-600 dark:via-emerald-700 dark:to-teal-700 rounded-2xl p-6 mb-3 shadow-md hover:shadow-lg overflow-hidden transition-shadow duration-300"
         animate={shouldPulse ? "pulse" : "initial"}
         variants={pulseAnimation}
+        whileHover={{ scale: 1.02 }}
       >
         {/* Shimmer effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
 
         {/* Number with flip animation */}
         <div className="relative text-3xl md:text-4xl font-bold text-white h-12 flex items-center justify-center overflow-hidden">
@@ -63,7 +64,7 @@ export function CountdownCard({ value, label, index }: CountdownCardProps) {
       </motion.div>
 
       <motion.div
-        className="inline-block px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm font-medium"
+        className="inline-block px-4 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full text-sm font-medium shadow-sm"
         whileHover={{ scale: 1.05 }}
         transition={{ duration: 0.2 }}
       >
