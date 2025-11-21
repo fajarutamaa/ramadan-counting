@@ -43,14 +43,22 @@ export function ShareButton({ hijriYear }: ShareButtonProps) {
   return (
     <motion.button
       onClick={handleShare}
-      className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg shadow-md transition-colors"
+      className="relative inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-700 hover:via-emerald-600 hover:to-teal-700 dark:from-emerald-500 dark:via-emerald-600 dark:to-teal-500 dark:hover:from-emerald-600 dark:hover:via-emerald-700 dark:hover:to-teal-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden"
       variants={scaleIn}
       initial="hidden"
       animate="visible"
-      whileHover={{ scale: 1.05 }}
+      whileHover={{ scale: 1.05, y: -2 }}
       whileTap={{ scale: 0.95 }}
       aria-label="Share countdown"
     >
+      {/* Ripple effect on hover */}
+      <motion.div
+        className="absolute inset-0 bg-white/10"
+        initial={{ scale: 0, opacity: 0.5 }}
+        whileHover={{ scale: 2, opacity: 0 }}
+        transition={{ duration: 0.6 }}
+      />
+
       {copied ? (
         <>
           <Check className="w-4 h-4" />

@@ -45,7 +45,7 @@ export default function RamadanCountdown() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50/80 via-sage-50 to-teal-50/70 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
         <IslamicPattern />
         <LoadingSkeleton />
       </div>
@@ -53,12 +53,12 @@ export default function RamadanCountdown() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50/80 via-sage-50 to-teal-50/70 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
       <IslamicPattern />
 
       {/* Theme Toggle Button - Fixed with backdrop */}
       <div className="fixed top-3 right-3 sm:top-4 sm:right-4 z-[100]">
-        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-lg shadow-lg p-0.5 sm:p-1">
+        <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-md rounded-xl shadow-lg p-0.5 sm:p-1 border border-slate-200/50 dark:border-slate-700/50">
           <ThemeToggleDropdown />
         </div>
       </div>
@@ -73,7 +73,7 @@ export default function RamadanCountdown() {
         <motion.div className="text-center mb-8" variants={fadeInUp}>
           <div className="flex items-center justify-center gap-3 mb-4">
             <h1
-              className="text-4xl font-bold bg-gradient-to-r from-teal-600 to-teal-700 bg-clip-text text-transparent"
+              className="text-4xl font-bold bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 bg-clip-text text-transparent dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-400"
               role="heading"
               aria-level={1}
             >
@@ -100,7 +100,7 @@ export default function RamadanCountdown() {
         <ProgressBar targetDate={ramadanDate} />
 
         {/* Main Card */}
-        <Card className="bg-white dark:bg-slate-800 border-0 shadow-2xl">
+        <Card className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm border border-slate-200/60 dark:border-slate-700/60 shadow-xl">
           <CardHeader className="text-center pb-4">
             <CardTitle className="text-2xl font-semibold text-slate-800 dark:text-slate-100">
               Countdown to Ramadan
