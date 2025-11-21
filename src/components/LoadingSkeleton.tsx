@@ -14,6 +14,35 @@ export function LoadingSkeleton() {
         </div>
       </div>
 
+      {/* Weather skeleton */}
+      <div className="mb-6">
+        <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm rounded-xl p-5 shadow-md border border-slate-200/40 dark:border-slate-700/40">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="relative w-16 h-16 bg-gradient-to-r from-slate-200/50 via-slate-300/80 to-slate-200/50 dark:from-slate-700/50 dark:via-slate-600/80 dark:to-slate-700/50 rounded-full overflow-hidden">
+              <div className="absolute inset-0 animate-shimmer-skeleton" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <div className="relative h-4 w-32 bg-gradient-to-r from-slate-200/50 via-slate-300/80 to-slate-200/50 dark:from-slate-700/50 dark:via-slate-600/80 dark:to-slate-700/50 rounded overflow-hidden">
+                <div className="absolute inset-0 animate-shimmer-skeleton" />
+              </div>
+              <div className="relative h-6 w-24 bg-gradient-to-r from-slate-200/50 via-slate-300/80 to-slate-200/50 dark:from-slate-700/50 dark:via-slate-600/80 dark:to-slate-700/50 rounded overflow-hidden">
+                <div className="absolute inset-0 animate-shimmer-skeleton" />
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {[...Array(3)].map((_, i) => (
+              <div
+                key={i}
+                className="relative h-20 bg-gradient-to-r from-slate-200/50 via-slate-300/80 to-slate-200/50 dark:from-slate-700/50 dark:via-slate-600/80 dark:to-slate-700/50 rounded-lg overflow-hidden"
+              >
+                <div className="absolute inset-0 animate-shimmer-skeleton" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Progress Bar skeleton */}
       <div className="mb-6">
         <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm rounded-xl p-4 shadow-md">

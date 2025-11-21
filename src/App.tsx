@@ -13,6 +13,7 @@ import { PrayerTimes } from "@/components/PrayerTimes";
 import { ShareButton } from "@/components/ShareButton";
 import { RamadanArrived } from "@/components/RamadanArrived";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { WeatherCard } from "@/components/WeatherCard";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useWeather } from "@/hooks/useWeather";
 import { useRamadanDate } from "@/hooks/useRamadanDate";
@@ -70,10 +71,13 @@ export default function RamadanCountdown() {
         animate="visible"
       >
         {/* Header */}
-        <motion.div className="text-center mb-8" variants={fadeInUp}>
-          <div className="flex items-center justify-center gap-3 mb-4">
+        <motion.div
+          className="text-center mb-6 sm:mb-8 px-4"
+          variants={fadeInUp}
+        >
+          <div className="flex items-center justify-center mb-3 sm:mb-4">
             <h1
-              className="text-4xl font-bold bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 bg-clip-text text-transparent dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-400"
+              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 bg-clip-text text-transparent dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-400 leading-tight"
               role="heading"
               aria-level={1}
             >
@@ -81,7 +85,7 @@ export default function RamadanCountdown() {
             </h1>
           </div>
           {ramadanDate && (
-            <p className="text-lg text-slate-600 dark:text-slate-300 mt-2">
+            <p className="text-sm sm:text-base md:text-lg text-slate-600 dark:text-slate-300 mt-2 px-2">
               InshaAllah will begin on{" "}
               {ramadanDate.toLocaleDateString("en-GB", {
                 weekday: "long",
@@ -91,10 +95,22 @@ export default function RamadanCountdown() {
               })}
             </p>
           )}
-          <div className="mt-4 flex justify-center">
+          <div className="mt-3 sm:mt-4 flex justify-center">
             <ShareButton hijriYear={hijriYear} />
           </div>
         </motion.div>
+
+        {/* Weather Card */}
+        <WeatherCard
+          temperature={weather.temperature}
+          weatherCode={weather.weatherCode}
+          windSpeed={weather.windSpeed}
+          humidity={weather.humidity}
+          visibility={weather.visibility}
+          location={weather.location}
+          loading={weather.loading}
+          error={weather.error}
+        />
 
         {/* Progress Bar */}
         <ProgressBar targetDate={ramadanDate} />
@@ -105,9 +121,6 @@ export default function RamadanCountdown() {
             <CardTitle className="text-2xl font-semibold text-slate-800 dark:text-slate-100">
               Countdown to Ramadan
             </CardTitle>
-            <h2 className="text-base font-regular text-muted-foreground">
-              Today's Weather in {weather.location} {weather.temperature} °C
-            </h2>
             <Separator className="mt-4" />
           </CardHeader>
           <CardContent className="pt-6">
