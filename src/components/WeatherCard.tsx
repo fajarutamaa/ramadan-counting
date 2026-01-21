@@ -2,13 +2,13 @@ import { motion } from "framer-motion";
 import {
   Cloud,
   CloudRain,
-  CloudSnow,
   CloudDrizzle,
   Sun,
   CloudFog,
   Wind,
   Droplets,
   Eye,
+  CloudLightning,
 } from "lucide-react";
 import { fadeIn } from "@/lib/animations";
 
@@ -55,11 +55,17 @@ const getWeatherInfo = (code: number) => {
       desc: "Rain",
       gradient: "from-blue-500/20 to-indigo-400/20",
     };
+  if (code <= 82)
+    return {
+      icon: CloudRain,
+      desc: "Heavy rain",
+      gradient: "from-blue-600/20 to-indigo-500/20",
+    };
   if (code <= 99)
     return {
-      icon: CloudSnow,
-      desc: "Snow",
-      gradient: "from-blue-300/20 to-white/20",
+      icon: CloudLightning,
+      desc: "Thunderstorm",
+      gradient: "from-purple-400/20 to-indigo-500/20",
     };
   return {
     icon: Cloud,
