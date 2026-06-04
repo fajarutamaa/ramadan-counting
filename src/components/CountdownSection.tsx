@@ -1,0 +1,38 @@
+import { useState } from "react";
+import { useCountdown } from "@/hooks/useCountdown";
+import { CountdownCard } from "@/components/CountdownCard";
+import { IslamicQuotes } from "@/components/IslamicQuotes";
+import { RamadanArrived } from "@/components/RamadanArrived";
+
+interface CountdownSectionProps {
+  ramadanDate: Date | null;
+}
+
+export function CountdownSection({ ramadanDate }: CountdownSectionProps) {
+  const [ramadanHasArrived, setRamadanHasArrived] = useState(false);
+  const timeLeft = useCountdown(ramadanDate, () => {
+    setRamadanHasArrived(true);
+  });
+
+  if (ramadanHasArrived) {
+    return <RamadanArrived />;
+  }
+
+  return (
+    <>
+      <div
+        className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
+        role="timer"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-label={`${timeLeft.days} days, ${timeLeft.hours} hours, ${timeLeft.minutes} minutes, ${timeLeft.seconds} seconds until Ramadan`}
+      >
+        <CountdownCard value={timeLeft.days} label="Days" index={0} />
+        <CountdownCard value={timeLeft.hours} label="Hours" index={1} />
+        <CountdownCard value={timeLeft.minutes} label="Minutes" index={2} />
+        <CountdownCard value={timeLeft.seconds} label="Seconds" index={3} />
+      </div>
+      <IslamicQuotes />
+    </>
+  );
+}
