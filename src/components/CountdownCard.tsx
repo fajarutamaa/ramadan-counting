@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { pulseAnimation, numberFlip } from "@/lib/animations";
+import { numberFlip } from "@/lib/animations";
 import { useEffect, useState } from "react";
 
 interface CountdownCardProps {
@@ -10,13 +10,13 @@ interface CountdownCardProps {
 
 export function CountdownCard({ value, label, index }: CountdownCardProps) {
   const [prevValue, setPrevValue] = useState(value);
-  const [shouldPulse, setShouldPulse] = useState(false);
+  const [shouldScale, setShouldScale] = useState(false);
 
   useEffect(() => {
     if (value !== prevValue) {
-      setShouldPulse(true);
+      setShouldScale(true);
       setPrevValue(value);
-      const timer = setTimeout(() => setShouldPulse(false), 300);
+      const timer = setTimeout(() => setShouldScale(false), 200);
       return () => clearTimeout(timer);
     }
   }, [value, prevValue]);
@@ -26,28 +26,16 @@ export function CountdownCard({ value, label, index }: CountdownCardProps) {
   return (
     <motion.div
       className="text-center"
-      initial="hidden"
-      animate="visible"
-      variants={{
-        hidden: { opacity: 0, y: 20 },
-        visible: {
-          opacity: 1,
-          y: 0,
-          transition: { delay: index * 0.1, duration: 0.5 },
-        },
-      }}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.08, duration: 0.4, ease: "easeOut" }}
     >
-      <motion.div
-        className="relative bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 dark:from-emerald-600 dark:via-emerald-700 dark:to-teal-700 rounded-2xl p-6 mb-3 shadow-md hover:shadow-lg overflow-hidden transition-shadow duration-300"
-        animate={shouldPulse ? "pulse" : "initial"}
-        variants={pulseAnimation}
-        whileHover={{ scale: 1.02 }}
+      <div
+        className={`bg-emerald-600 dark:bg-emerald-500 rounded-xl p-4 sm:p-5 mb-2 transition-transform duration-200 ${
+          shouldScale ? "scale-95" : "scale-100"
+        }`}
       >
-        {/* Shimmer effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
-
-        {/* Number with flip animation */}
-        <div className="relative text-3xl md:text-4xl font-bold text-white h-12 flex items-center justify-center overflow-hidden">
+        <div className="text-2xl sm:text-3xl font-bold text-white h-10 flex items-center justify-center overflow-hidden tabular-nums">
           <AnimatePresence mode="popLayout">
             <motion.span
               key={formattedValue}
@@ -61,15 +49,10 @@ export function CountdownCard({ value, label, index }: CountdownCardProps) {
             </motion.span>
           </AnimatePresence>
         </div>
-      </motion.div>
-
-      <motion.div
-        className="inline-block px-4 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full text-sm font-medium shadow-sm"
-        whileHover={{ scale: 1.05 }}
-        transition={{ duration: 0.2 }}
-      >
+      </div>
+      <span className="text-xs sm:text-sm font-medium text-muted-foreground">
         {label}
-      </motion.div>
+      </span>
     </motion.div>
   );
 }

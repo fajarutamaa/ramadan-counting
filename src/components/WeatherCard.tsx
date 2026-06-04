@@ -23,55 +23,15 @@ interface WeatherCardProps {
   error: string | null;
 }
 
-// Weather code mapping to icons and descriptions
 const getWeatherInfo = (code: number) => {
-  if (code === 0)
-    return {
-      icon: Sun,
-      desc: "Clear sky",
-      gradient: "from-yellow-400/20 to-orange-400/20",
-    };
-  if (code <= 3)
-    return {
-      icon: Cloud,
-      desc: "Partly cloudy",
-      gradient: "from-blue-400/20 to-slate-400/20",
-    };
-  if (code <= 48)
-    return {
-      icon: CloudFog,
-      desc: "Foggy",
-      gradient: "from-slate-400/20 to-gray-400/20",
-    };
-  if (code <= 67)
-    return {
-      icon: CloudDrizzle,
-      desc: "Drizzle",
-      gradient: "from-blue-400/20 to-cyan-400/20",
-    };
-  if (code <= 77)
-    return {
-      icon: CloudRain,
-      desc: "Rain",
-      gradient: "from-blue-500/20 to-indigo-400/20",
-    };
-  if (code <= 82)
-    return {
-      icon: CloudRain,
-      desc: "Heavy rain",
-      gradient: "from-blue-600/20 to-indigo-500/20",
-    };
-  if (code <= 99)
-    return {
-      icon: CloudLightning,
-      desc: "Thunderstorm",
-      gradient: "from-purple-400/20 to-indigo-500/20",
-    };
-  return {
-    icon: Cloud,
-    desc: "Cloudy",
-    gradient: "from-slate-400/20 to-gray-400/20",
-  };
+  if (code === 0) return { icon: Sun, desc: "Clear sky" };
+  if (code <= 3) return { icon: Cloud, desc: "Partly cloudy" };
+  if (code <= 48) return { icon: CloudFog, desc: "Foggy" };
+  if (code <= 67) return { icon: CloudDrizzle, desc: "Drizzle" };
+  if (code <= 77) return { icon: CloudRain, desc: "Rain" };
+  if (code <= 82) return { icon: CloudRain, desc: "Heavy rain" };
+  if (code <= 99) return { icon: CloudLightning, desc: "Thunderstorm" };
+  return { icon: Cloud, desc: "Cloudy" };
 };
 
 export function WeatherCard({
@@ -86,99 +46,65 @@ export function WeatherCard({
 }: WeatherCardProps) {
   if (loading) {
     return (
-      <motion.div
-        className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-md rounded-xl p-5 shadow-md border border-slate-200/40 dark:border-slate-700/40"
-        variants={fadeIn}
-        initial="hidden"
-        animate="visible"
-      >
+      <div className="bg-card border border-border rounded-xl p-5">
         <div className="flex items-center gap-4">
-          <div className="relative w-16 h-16 bg-gradient-to-r from-slate-200/50 via-slate-300/80 to-slate-200/50 dark:from-slate-700/50 dark:via-slate-600/80 dark:to-slate-700/50 rounded-full overflow-hidden">
-            <div className="absolute inset-0 animate-shimmer-skeleton" />
-          </div>
+          <div className="w-12 h-12 rounded-full bg-muted animate-shimmer" />
           <div className="flex-1 space-y-2">
-            <div className="relative h-6 w-32 bg-gradient-to-r from-slate-200/50 via-slate-300/80 to-slate-200/50 dark:from-slate-700/50 dark:via-slate-600/80 dark:to-slate-700/50 rounded overflow-hidden">
-              <div className="absolute inset-0 animate-shimmer-skeleton" />
-            </div>
-            <div className="relative h-4 w-24 bg-gradient-to-r from-slate-200/50 via-slate-300/80 to-slate-200/50 dark:from-slate-700/50 dark:via-slate-600/80 dark:to-slate-700/50 rounded overflow-hidden">
-              <div className="absolute inset-0 animate-shimmer-skeleton" />
-            </div>
+            <div className="h-4 w-32 rounded bg-muted animate-shimmer" />
+            <div className="h-3 w-24 rounded bg-muted animate-shimmer" />
           </div>
         </div>
-      </motion.div>
+      </div>
     );
   }
 
-  if (error) {
-    return null;
-  }
+  if (error) return null;
 
   const weatherInfo = getWeatherInfo(weatherCode);
   const WeatherIcon = weatherInfo.icon;
 
   return (
     <motion.div
-      className={`relative overflow-hidden bg-gradient-to-br ${weatherInfo.gradient} bg-white/60 dark:bg-slate-800/60 backdrop-blur-md rounded-xl p-5 shadow-md border border-slate-200/40 dark:border-slate-700/40`}
+      className="bg-card border border-border rounded-xl p-5 sm:p-6"
       variants={fadeIn}
       initial="hidden"
       animate="visible"
     >
-      {/* Location Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">
+          <p className="text-xs text-muted-foreground font-medium">
             Current Weather
-          </h3>
-          <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+          </p>
+          <p className="text-base font-semibold text-foreground mt-0.5">
             {location}
           </p>
         </div>
-        <div className="p-3 bg-white/50 dark:bg-slate-700/50 rounded-full">
-          <WeatherIcon className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
-        </div>
+        <WeatherIcon className="w-6 h-6 text-emerald-600 dark:text-emerald-400 mt-1" />
       </div>
 
-      {/* Temperature & Condition */}
-      <div className="flex items-end gap-3 mb-4">
-        <div className="text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent">
+      <div className="flex items-end gap-2 mb-5">
+        <span className="text-4xl sm:text-5xl font-bold text-emerald-600 dark:text-emerald-400 leading-none tabular-nums">
           {temperature}°
-        </div>
-        <div className="text-lg text-slate-600 dark:text-slate-300 mb-2">
+        </span>
+        <span className="text-sm text-muted-foreground mb-1">
           {weatherInfo.desc}
-        </div>
+        </span>
       </div>
 
-      {/* Weather Details Grid */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white/40 dark:bg-slate-700/40 rounded-lg p-3 text-center">
-          <Wind className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mx-auto mb-1" />
-          <div className="text-xs text-slate-600 dark:text-slate-400 mb-0.5">
-            Wind
+        {[
+          { icon: Wind, label: "Wind", value: `${windSpeed} km/h` },
+          { icon: Droplets, label: "Humidity", value: `${humidity}%` },
+          { icon: Eye, label: "Visibility", value: `${visibility} km` },
+        ].map(({ icon: Icon, label, value }) => (
+          <div key={label} className="text-center">
+            <Icon className="w-4 h-4 text-muted-foreground mx-auto mb-1.5" />
+            <div className="text-[11px] text-muted-foreground font-medium">
+              {label}
+            </div>
+            <div className="text-sm font-semibold text-foreground">{value}</div>
           </div>
-          <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-            {windSpeed} km/h
-          </div>
-        </div>
-
-        <div className="bg-white/40 dark:bg-slate-700/40 rounded-lg p-3 text-center">
-          <Droplets className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mx-auto mb-1" />
-          <div className="text-xs text-slate-600 dark:text-slate-400 mb-0.5">
-            Humidity
-          </div>
-          <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-            {humidity}%
-          </div>
-        </div>
-
-        <div className="bg-white/40 dark:bg-slate-700/40 rounded-lg p-3 text-center">
-          <Eye className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mx-auto mb-1" />
-          <div className="text-xs text-slate-600 dark:text-slate-400 mb-0.5">
-            Visibility
-          </div>
-          <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-            {visibility} km
-          </div>
-        </div>
+        ))}
       </div>
     </motion.div>
   );

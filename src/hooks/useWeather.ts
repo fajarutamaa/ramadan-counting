@@ -30,6 +30,7 @@ export function useWeather(
   });
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isVisibleRef = useRef(true);
 
   useEffect(() => {
     if (!coords) return;
@@ -71,7 +72,7 @@ export function useWeather(
           }));
         }
       } catch (err) {
-        console.error("[useWeather] ❌ Failed to fetch weather:", err);
+        console.error("[useWeather] Failed to fetch weather:", err);
         setWeather((prev) => ({
           ...prev,
           loading: false,
@@ -80,11 +81,37 @@ export function useWeather(
       }
     };
 
+    const startPolling = () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(fetchWeather, refreshInterval);
+    };
+
+    const stopPolling = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+
     fetchWeather();
-    intervalRef.current = setInterval(fetchWeather, refreshInterval);
+    startPolling();
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        isVisibleRef.current = false;
+        stopPolling();
+      } else {
+        isVisibleRef.current = true;
+        fetchWeather();
+        startPolling();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      stopPolling();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [coords, weatherBaseUrl, locationBaseUrl, refreshInterval]);
 
