@@ -52,7 +52,7 @@ export function useRamadanDate(coords: Coords | null, baseUrl: string) {
       }
 
       const [rDay, rMon, rYear] = ramadanData.data.gregorian.date.split("-");
-      let found = new Date(`${rYear}-${rMon}-${rDay}T00:00:00+07:00`);
+      let found = new Date(Number(rYear), Number(rMon) - 1, Number(rDay));
       let year = targetHijriYear;
 
       if (found.getTime() <= Date.now()) {
@@ -66,7 +66,7 @@ export function useRamadanDate(coords: Coords | null, baseUrl: string) {
         }
 
         const [nDay, nMon, nYear] = nextData.data.gregorian.date.split("-");
-        found = new Date(`${nYear}-${nMon}-${nDay}T00:00:00+07:00`);
+        found = new Date(Number(nYear), Number(nMon) - 1, Number(nDay));
         year = targetHijriYear + 1;
       }
 
@@ -76,9 +76,27 @@ export function useRamadanDate(coords: Coords | null, baseUrl: string) {
       sessionStorage.setItem("hijriYear", String(year));
     } catch (e) {
       console.error("Failed fetch Ramadan:", e);
-      const nextYear = new Date().getFullYear() + 1;
-      const fallback = new Date(`${nextYear}-03-01T00:00:00+07:00`);
-      setRamadanDate(fallback);
+      try {
+        const estimated = await fetch(
+          `${baseUrl}/hToG/9/1/${new Date().getFullYear() + 1}`,
+        );
+        const estData = await estimated.json();
+        if (estData.code === 200 && estData.data?.gregorian) {
+          const [fDay, fMon, fYear] = estData.data.gregorian.date.split("-");
+          const fallback = new Date(
+            Number(fYear),
+            Number(fMon) - 1,
+            Number(fDay),
+          );
+          setRamadanDate(fallback);
+          return;
+        }
+      } catch {
+        // ignore secondary failure
+      }
+      const lastResort = new Date();
+      lastResort.setFullYear(lastResort.getFullYear() + 1, 1, 1);
+      setRamadanDate(lastResort);
     }
   }, [coords, baseUrl]);
 
