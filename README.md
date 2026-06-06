@@ -43,26 +43,6 @@ A privacy-first, open-source Islamic companion that does one thing well — help
 | **Theme Support**         | Light, dark, and system theme with persistent preference                                                        |
 | **Location Detection**    | Browser geolocation with session caching; graceful fallback when unavailable                                    |
 
----
-
-## Screenshots
-
-### Home Dashboard
-
-![Home Dashboard](docs/screenshots/home.png)
-
-### Prayer Times
-
-![Prayer Times](docs/screenshots/prayer-times.png)
-
-### Qibla Compass
-
-![Qibla Compass](docs/screenshots/qibla.png)
-
-_(Screenshots directory at `docs/screenshots/` — add your own images)_
-
----
-
 ## Tech Stack
 
 | Technology                           | Purpose                                                                   |
