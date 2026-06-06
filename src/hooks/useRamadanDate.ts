@@ -5,92 +5,113 @@ interface Coords {
   lon: number;
 }
 
+interface HijriResponse {
+  year: number;
+  month: number;
+}
+
+function readCachedRamadanDate(): { date: Date; year: string } | null {
+  const cached = sessionStorage.getItem("ramadanDate");
+  const cachedYear = sessionStorage.getItem("hijriYear");
+  if (!cached || !cachedYear) return null;
+  const date = new Date(cached);
+  if (date.getTime() <= Date.now()) {
+    sessionStorage.removeItem("ramadanDate");
+    sessionStorage.removeItem("hijriYear");
+    return null;
+  }
+  return { date, year: cachedYear };
+}
+
+function writeRamadanDateCache(date: Date, year: string) {
+  sessionStorage.setItem("ramadanDate", date.toISOString());
+  sessionStorage.setItem("hijriYear", year);
+}
+
+async function fetchCurrentHijriData(baseUrl: string): Promise<HijriResponse> {
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const yyyy = now.getFullYear();
+
+  const res = await fetch(`${baseUrl}/gToH/${dd}-${mm}-${yyyy}`);
+  const data = await res.json();
+
+  if (data.code !== 200 || !data.data?.hijri) {
+    throw new Error("Failed to get current Hijri date");
+  }
+
+  return {
+    year: parseInt(data.data.hijri.year),
+    month: data.data.hijri.month.number,
+  };
+}
+
+async function fetchRamadanGregorian(
+  baseUrl: string,
+  hijriYear: number,
+): Promise<Date> {
+  const res = await fetch(`${baseUrl}/hToG/9/1/${hijriYear}`);
+  const data = await res.json();
+
+  if (data.code !== 200 || !data.data?.gregorian) {
+    throw new Error("Failed to get Ramadan date");
+  }
+
+  const [day, mon, year] = data.data.gregorian.date.split("-");
+  return new Date(Number(year), Number(mon) - 1, Number(day));
+}
+
+function computeTargetHijriYear(
+  currentMonth: number,
+  currentYear: number,
+): number {
+  return currentMonth <= 9 ? currentYear : currentYear + 1;
+}
+
+function needsNextYearRamadan(date: Date): boolean {
+  return date.getTime() <= Date.now();
+}
+
 export function useRamadanDate(coords: Coords | null, baseUrl: string) {
   const [ramadanDate, setRamadanDate] = useState<Date | null>(null);
   const [hijriYear, setHijriYear] = useState<string>("");
 
   const getRamadanDate = useCallback(async () => {
     if (!coords) return;
-    const cached = sessionStorage.getItem("ramadanDate");
-    const cachedYear = sessionStorage.getItem("hijriYear");
 
-    if (cached && cachedYear) {
-      const cachedDate = new Date(cached);
-      if (cachedDate.getTime() > Date.now()) {
-        setRamadanDate(cachedDate);
-        setHijriYear(cachedYear);
-        return;
-      }
-      sessionStorage.removeItem("ramadanDate");
-      sessionStorage.removeItem("hijriYear");
+    const cached = readCachedRamadanDate();
+    if (cached) {
+      setRamadanDate(cached.date);
+      setHijriYear(cached.year);
+      return;
     }
 
     try {
-      const now = new Date();
-      const dd = String(now.getDate()).padStart(2, "0");
-      const mm = String(now.getMonth() + 1).padStart(2, "0");
-      const yyyy = now.getFullYear();
+      const { year: currentYear, month: currentMonth } =
+        await fetchCurrentHijriData(baseUrl);
+      const targetYear = computeTargetHijriYear(currentMonth, currentYear);
 
-      const todayRes = await fetch(`${baseUrl}/gToH/${dd}-${mm}-${yyyy}`);
-      const todayData = await todayRes.json();
+      let found = await fetchRamadanGregorian(baseUrl, targetYear);
+      let year = targetYear;
 
-      if (todayData.code !== 200 || !todayData.data?.hijri) {
-        throw new Error("Failed to get current Hijri date");
-      }
-
-      const currentHijriYear = parseInt(todayData.data.hijri.year);
-      const currentHijriMonth = todayData.data.hijri.month.number;
-
-      const targetHijriYear =
-        currentHijriMonth <= 9 ? currentHijriYear : currentHijriYear + 1;
-
-      const ramadanRes = await fetch(`${baseUrl}/hToG/9/1/${targetHijriYear}`);
-      const ramadanData = await ramadanRes.json();
-
-      if (ramadanData.code !== 200 || !ramadanData.data?.gregorian) {
-        throw new Error("Failed to get Ramadan date");
-      }
-
-      const [rDay, rMon, rYear] = ramadanData.data.gregorian.date.split("-");
-      let found = new Date(Number(rYear), Number(rMon) - 1, Number(rDay));
-      let year = targetHijriYear;
-
-      if (found.getTime() <= Date.now()) {
-        const nextRes = await fetch(
-          `${baseUrl}/hToG/9/1/${targetHijriYear + 1}`,
-        );
-        const nextData = await nextRes.json();
-
-        if (nextData.code !== 200 || !nextData.data?.gregorian) {
-          throw new Error("Failed to get next Ramadan date");
-        }
-
-        const [nDay, nMon, nYear] = nextData.data.gregorian.date.split("-");
-        found = new Date(Number(nYear), Number(nMon) - 1, Number(nDay));
-        year = targetHijriYear + 1;
+      if (needsNextYearRamadan(found)) {
+        found = await fetchRamadanGregorian(baseUrl, targetYear + 1);
+        year = targetYear + 1;
       }
 
       setRamadanDate(found);
       setHijriYear(String(year));
-      sessionStorage.setItem("ramadanDate", found.toISOString());
-      sessionStorage.setItem("hijriYear", String(year));
+      writeRamadanDateCache(found, String(year));
     } catch (e) {
       console.error("Failed fetch Ramadan:", e);
       try {
-        const estimated = await fetch(
-          `${baseUrl}/hToG/9/1/${new Date().getFullYear() + 1}`,
+        const fallback = await fetchRamadanGregorian(
+          baseUrl,
+          new Date().getFullYear() + 1,
         );
-        const estData = await estimated.json();
-        if (estData.code === 200 && estData.data?.gregorian) {
-          const [fDay, fMon, fYear] = estData.data.gregorian.date.split("-");
-          const fallback = new Date(
-            Number(fYear),
-            Number(fMon) - 1,
-            Number(fDay),
-          );
-          setRamadanDate(fallback);
-          return;
-        }
+        setRamadanDate(fallback);
+        return;
       } catch {
         // ignore secondary failure
       }
