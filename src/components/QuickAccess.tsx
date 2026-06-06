@@ -100,15 +100,13 @@ export function QuickAccess() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.4, delay: i * 0.06 }}
-              className="group relative flex flex-col items-center text-center gap-3 rounded-xl border border-border bg-card p-5 transition-all duration-300 hover:-translate-y-1"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = `0 8px 32px ${accent.glow}`;
-                e.currentTarget.style.borderColor = accent.border;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = "";
-                e.currentTarget.style.borderColor = "";
-              }}
+              className="group relative flex flex-col items-center text-center gap-3 rounded-xl border border-border bg-card p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_32px_var(--card-glow)] hover:border-[var(--card-border)]"
+              style={
+                {
+                  "--card-glow": accent.glow,
+                  "--card-border": accent.border,
+                } as React.CSSProperties
+              }
             >
               <div
                 className="absolute inset-0 rounded-xl opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none"
@@ -117,12 +115,12 @@ export function QuickAccess() {
                 }}
               />
               <div
-                className="relative flex items-center justify-center w-12 h-12 rounded-full shrink-0 shadow-lg"
+                className="relative flex items-center justify-center w-12 h-12 rounded-full shrink-0 shadow-sm"
                 style={{
                   background: `linear-gradient(135deg, ${accent.from}, ${accent.to})`,
                 }}
               >
-                <Icon className="w-5 h-5 text-white" />
+                <Icon className="w-6 h-6 text-white" />
               </div>
               <div className="relative">
                 <h3 className="text-xs sm:text-sm font-semibold text-foreground">

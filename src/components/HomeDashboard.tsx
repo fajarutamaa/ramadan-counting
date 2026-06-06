@@ -13,6 +13,14 @@ import {
   Sunset,
   Sun,
   CloudMoon,
+  Cloud,
+  CloudRain,
+  CloudDrizzle,
+  CloudFog,
+  Wind,
+  Droplets,
+  Eye,
+  CloudLightning,
 } from "lucide-react";
 import { fetchNearbyMosques, type Mosque } from "@/lib/mosqueApi";
 import { usePrayerTimes, type PrayerTime } from "@/hooks/usePrayerTimes";
@@ -53,6 +61,27 @@ function getTimeToPrayer(timeStr: string): string {
   const hours = Math.floor(mins / 60);
   const rem = mins % 60;
   return `${hours}h ${rem}m`;
+}
+
+function getWeatherDesc(code: number): string {
+  if (code === 0) return "Clear sky";
+  if (code <= 3) return "Partly cloudy";
+  if (code <= 48) return "Foggy";
+  if (code <= 67) return "Drizzle";
+  if (code <= 77) return "Rain";
+  if (code <= 82) return "Heavy rain";
+  if (code <= 99) return "Thunderstorm";
+  return "Cloudy";
+}
+
+function getWeatherIcon(code: number): typeof Sun {
+  if (code === 0) return Sun;
+  if (code <= 3) return Cloud;
+  if (code <= 48) return CloudFog;
+  if (code <= 77) return CloudRain;
+  if (code <= 82) return CloudDrizzle;
+  if (code <= 99) return CloudLightning;
+  return Cloud;
 }
 
 function getTodayVerse() {
@@ -121,9 +150,26 @@ function getNextEvent(): IslamicEvent | null {
 interface HomeDashboardProps {
   coords: { lat: number; lon: number } | null;
   location: string;
+  temperature: number;
+  weatherCode: number;
+  windSpeed: number;
+  humidity: number;
+  visibility: number;
+  weatherLoading: boolean;
+  weatherError: string | null;
 }
 
-export function HomeDashboard({ coords, location }: HomeDashboardProps) {
+export function HomeDashboard({
+  coords,
+  location,
+  temperature,
+  weatherCode,
+  windSpeed,
+  humidity,
+  visibility,
+  weatherLoading,
+  weatherError,
+}: HomeDashboardProps) {
   const { times: prayerTimes } = usePrayerTimes(coords);
   const [nearbySummary, setNearbySummary] = useState<{
     count: number;
@@ -233,39 +279,74 @@ export function HomeDashboard({ coords, location }: HomeDashboardProps) {
     [now],
   );
 
+  const WeatherIcon = useMemo(() => getWeatherIcon(weatherCode), [weatherCode]);
+
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* Greeting bar */}
+      {/* Hero section */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="flex items-center justify-between"
+        className="relative"
       >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-            <GreetingIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+        {/* Background glow behind hero */}
+        <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-emerald-500/5 dark:bg-emerald-400/5 rounded-full blur-[100px] pointer-events-none" />
+
+        {/* Greeting bar */}
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+              <GreetingIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <h1 className="text-base sm:text-lg font-semibold text-foreground">
+                {greetingText}
+              </h1>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                {location ||
+                  (coords
+                    ? `${coords.lat.toFixed(2)}, ${coords.lon.toFixed(2)}`
+                    : "Enable location")}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-base sm:text-lg font-semibold text-foreground">
-              {greetingText}
-            </h1>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              {location ||
-                (coords
-                  ? `${coords.lat.toFixed(2)}, ${coords.lon.toFixed(2)}`
-                  : "Enable location")}
+          <div className="text-right">
+            <p className="text-sm font-semibold text-foreground">
+              {formattedTime}
             </p>
+            {hijriDate && (
+              <p className="text-[11px] text-muted-foreground">{hijriDate}</p>
+            )}
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-semibold text-foreground">
-            {formattedTime}
+
+        {/* Hero headline */}
+        <div className="relative z-10 mt-8 sm:mt-10 text-center">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground tracking-tight leading-tight">
+            Your Daily Muslim Companion
+          </h2>
+          <p className="mt-4 text-sm sm:text-base text-muted-foreground max-w-xl mx-auto leading-relaxed">
+            Accurate prayer times, nearby mosques, Qibla direction, Islamic
+            calendar, and essential tools for your daily spiritual journey.
           </p>
-          {hijriDate && (
-            <p className="text-[11px] text-muted-foreground">{hijriDate}</p>
-          )}
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <button
+              onClick={() => scrollTo("prayer-times")}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 text-sm font-semibold transition-all shadow-lg shadow-emerald-600/25"
+            >
+              <Clock className="w-4 h-4" />
+              Explore Tools
+            </button>
+            <button
+              onClick={() => scrollTo("features")}
+              className="inline-flex items-center gap-2 rounded-xl bg-secondary hover:bg-secondary/80 text-secondary-foreground px-6 py-2.5 text-sm font-semibold transition-all"
+            >
+              <Sparkles className="w-4 h-4" />
+              View Features
+            </button>
+          </div>
         </div>
       </motion.div>
 
@@ -274,7 +355,7 @@ export function HomeDashboard({ coords, location }: HomeDashboardProps) {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
-        className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-700 dark:from-emerald-500 dark:to-emerald-700 p-5 sm:p-6 shadow-lg shadow-emerald-900/20"
+        className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-700 dark:from-emerald-500 dark:to-emerald-700 p-5 sm:p-6 shadow-lg shadow-emerald-900/20 hover:shadow-xl hover:shadow-emerald-900/30 transition-all duration-300 hover:-translate-y-0.5"
       >
         {/* Decorative layers */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(255,255,255,0.08)_0%,transparent_60%)]" />
@@ -324,7 +405,10 @@ export function HomeDashboard({ coords, location }: HomeDashboardProps) {
               <p className="text-[11px] font-medium text-emerald-100/80 uppercase tracking-wider">
                 Next: {nextPrayer.name}
               </p>
-              <p className="text-xl sm:text-2xl font-bold text-white mt-0.5 tabular-nums">
+              <p
+                className="text-2xl sm:text-3xl font-bold text-white mt-0.5 tabular-nums"
+                style={{ textShadow: "0 0 20px rgba(255,255,255,0.12)" }}
+              >
                 {nextPrayerCountdown}
               </p>
               <p className="text-sm text-emerald-100/80 mt-1">
@@ -335,28 +419,69 @@ export function HomeDashboard({ coords, location }: HomeDashboardProps) {
         </div>
 
         {/* Quick action links */}
-        <div className="relative z-10 mt-4 pt-3 border-t border-emerald-500/40 flex items-center gap-3">
-          <button
-            onClick={() => scrollTo("prayer-times")}
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-100 hover:text-white transition-colors"
-          >
-            <Clock className="w-3 h-3" />
-            All Times
-          </button>
-          <button
-            onClick={() => scrollTo("qibla")}
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-100 hover:text-white transition-colors"
-          >
-            <Compass className="w-3 h-3" />
-            Qibla
-          </button>
-          <button
-            onClick={() => scrollTo("mosques")}
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-100 hover:text-white transition-colors"
-          >
-            <MapPin className="w-3 h-3" />
-            Mosques
-          </button>
+        <div className="relative z-10 mt-4 pt-3 border-t border-emerald-500/40">
+          {/* Weather summary */}
+          {!weatherLoading && !weatherError && (
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-emerald-500/20">
+              <div className="flex items-center gap-2">
+                <WeatherIcon className="w-4 h-4 text-emerald-100/80" />
+                <span className="text-sm text-emerald-100/80">
+                  {temperature}° · {getWeatherDesc(weatherCode)}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-[11px] text-emerald-100/60">
+                <span className="inline-flex items-center gap-1">
+                  <Wind className="w-2.5 h-2.5" />
+                  {windSpeed} km/h
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Droplets className="w-2.5 h-2.5" />
+                  {humidity}%
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Eye className="w-2.5 h-2.5" />
+                  {visibility} km
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => scrollTo("prayer-times")}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-100 hover:text-white transition-colors"
+            >
+              <Clock className="w-3 h-3" />
+              All Times
+            </button>
+            <button
+              onClick={() => scrollTo("qibla")}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-100 hover:text-white transition-colors"
+            >
+              <Compass className="w-3 h-3" />
+              Qibla
+            </button>
+            <button
+              onClick={() => scrollTo("mosques")}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-100 hover:text-white transition-colors"
+            >
+              <MapPin className="w-3 h-3" />
+              Mosques
+            </button>
+            <span className="ml-auto flex items-center gap-2">
+              {location && (
+                <span className="text-[10px] text-emerald-100/60 inline-flex items-center gap-1">
+                  <MapPin className="w-2.5 h-2.5" />
+                  {location}
+                </span>
+              )}
+              {hijriDate && (
+                <span className="text-[10px] text-emerald-100/60">
+                  {hijriDate}
+                </span>
+              )}
+            </span>
+          </div>
         </div>
       </motion.div>
 
@@ -370,9 +495,9 @@ export function HomeDashboard({ coords, location }: HomeDashboardProps) {
         {/* Qibla */}
         <button
           onClick={() => scrollTo("qibla")}
-          className="flex flex-col items-center gap-2 rounded-xl bg-card border border-border p-4 transition-all hover:shadow-sm hover:-translate-y-0.5"
+          className="relative group flex flex-col items-center gap-2 rounded-xl bg-card border border-border/80 p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-emerald-500/30 shadow-sm"
         >
-          <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center group-hover:scale-105 transition-transform">
             <Compass className="w-4 h-4 text-purple-600 dark:text-purple-400" />
           </div>
           <div className="text-center">
@@ -386,9 +511,9 @@ export function HomeDashboard({ coords, location }: HomeDashboardProps) {
         {/* Nearby Mosques */}
         <button
           onClick={() => scrollTo("mosques")}
-          className="flex flex-col items-center gap-2 rounded-xl bg-card border border-border p-4 transition-all hover:shadow-sm hover:-translate-y-0.5"
+          className="relative group flex flex-col items-center gap-2 rounded-xl bg-card border border-border/80 p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-emerald-500/30 shadow-sm"
         >
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center group-hover:scale-105 transition-transform">
             <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="text-center">
@@ -405,8 +530,8 @@ export function HomeDashboard({ coords, location }: HomeDashboardProps) {
         </button>
 
         {/* Hijri */}
-        <div className="flex flex-col items-center gap-2 rounded-xl bg-card border border-border p-4">
-          <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+        <div className="relative group flex flex-col items-center gap-2 rounded-xl bg-card border border-border/80 p-4 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center group-hover:scale-105 transition-transform">
             <Moon className="w-4 h-4 text-rose-600 dark:text-rose-400" />
           </div>
           <div className="text-center">
@@ -420,9 +545,9 @@ export function HomeDashboard({ coords, location }: HomeDashboardProps) {
         {/* Next Event */}
         <button
           onClick={() => scrollTo("calendar")}
-          className="flex flex-col items-center gap-2 rounded-xl bg-card border border-border p-4 transition-all hover:shadow-sm hover:-translate-y-0.5"
+          className="relative group flex flex-col items-center gap-2 rounded-xl bg-card border border-border/80 p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-emerald-500/30 shadow-sm"
         >
-          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center group-hover:scale-105 transition-transform">
             <Star className="w-4 h-4 text-amber-600 dark:text-amber-400" />
           </div>
           <div className="text-center">
@@ -446,7 +571,7 @@ export function HomeDashboard({ coords, location }: HomeDashboardProps) {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.3 }}
-        className="rounded-xl bg-card border border-border p-5 sm:p-6"
+        className="rounded-xl bg-card border border-border/80 p-5 sm:p-6 shadow-sm hover:shadow-lg transition-all duration-300 hover:border-emerald-500/30"
       >
         <div className="flex items-center gap-2 mb-3">
           <BookText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -582,10 +707,10 @@ function SmartRecommendations({
           <button
             key={r.id}
             onClick={() => scrollTo(r.href)}
-            className="w-full flex items-start gap-3 rounded-xl bg-card border border-border p-4 transition-all hover:shadow-sm hover:-translate-y-0.5 text-left"
+            className="w-full group flex items-start gap-3 rounded-xl bg-card border border-border/80 p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-emerald-500/30 shadow-sm text-left"
           >
             <div
-              className={`w-10 h-10 rounded-xl ${r.bg} flex items-center justify-center shrink-0 mt-0.5`}
+              className={`w-10 h-10 rounded-xl ${r.bg} flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform`}
             >
               <r.icon className={`w-4 h-4 ${r.color}`} />
             </div>

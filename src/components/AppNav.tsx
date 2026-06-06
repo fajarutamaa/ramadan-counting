@@ -154,6 +154,7 @@ export function AppNav() {
                   onClick={() => scrollTo(id)}
                   className={cn(
                     "relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
+                    "md:px-2 md:text-xs md:gap-1 lg:px-3 lg:text-sm lg:gap-1.5",
                     isActive
                       ? "text-emerald-600 dark:text-emerald-400"
                       : "text-muted-foreground hover:text-foreground",

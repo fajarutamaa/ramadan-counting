@@ -74,11 +74,11 @@ export function PrayerTimes({ coords }: PrayerTimesProps) {
           </h3>
         </div>
 
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
           {times.map((prayer) => (
             <div
               key={prayer.name}
-              className={`relative rounded-lg p-3 text-center transition-colors ${
+              className={`relative rounded-lg p-2.5 sm:p-3 text-center transition-colors ${
                 prayer.isCurrent
                   ? "bg-emerald-600 dark:bg-emerald-500 text-white"
                   : prayer.isNext
@@ -92,10 +92,10 @@ export function PrayerTimes({ coords }: PrayerTimesProps) {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
                 </span>
               )}
-              <div className="text-[11px] font-medium mb-1 opacity-80">
+              <div className="text-[10px] sm:text-[11px] font-medium mb-0.5 sm:mb-1 opacity-80">
                 {prayer.name}
               </div>
-              <div className="text-base font-bold tabular-nums leading-none">
+              <div className="text-sm sm:text-base font-bold tabular-nums leading-none">
                 {prayer.time}
               </div>
             </div>

@@ -13,14 +13,12 @@ import { DailyVerse } from "@/components/DailyVerse";
 import { JuzTracker } from "@/components/JuzTracker";
 import { TasbihCounter } from "@/components/TasbihCounter";
 import { MosqueSection } from "@/components/MosqueSection";
-import { WeatherCard } from "@/components/WeatherCard";
 import { QiblaCompass } from "@/components/QiblaCompass";
 import { IslamicCalendar } from "@/components/IslamicCalendar";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useWeather } from "@/hooks/useWeather";
 import { useRamadanDate } from "@/hooks/useRamadanDate";
 
-const MemoizedWeatherCard = memo(WeatherCard);
 const MemoizedPrayerTimes = memo(PrayerTimes);
 
 export default function App() {
@@ -40,11 +38,12 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background relative">
       <div className="bg-grid" />
+      <div className="bg-geo-lines" />
       <div className="bg-gradient-overlay" />
       <AppNav />
 
       {/* ── 1. Home Hero ── */}
-      <section id="home" className="relative">
+      <section id="home" className="relative overflow-hidden">
         <div
           className="bg-radial-accent w-[500px] h-[500px] -top-40 -right-40 opacity-40"
           style={{ background: "oklch(0.78 0.1 160 / 0.12)" }}
@@ -54,7 +53,17 @@ export default function App() {
           style={{ background: "oklch(0.78 0.1 160 / 0.08)" }}
         />
         <div className="max-w-2xl mx-auto px-4 sm:px-8 pt-20 sm:pt-24 pb-4">
-          <HomeDashboard coords={coords.coords} location={weather.location} />
+          <HomeDashboard
+            coords={coords.coords}
+            location={weather.location}
+            temperature={weather.temperature}
+            weatherCode={weather.weatherCode}
+            windSpeed={weather.windSpeed}
+            humidity={weather.humidity}
+            visibility={weather.visibility}
+            weatherLoading={weather.loading}
+            weatherError={weather.error}
+          />
         </div>
         {/* ── 2. Quick Actions ── */}
         <QuickAccess />
@@ -84,20 +93,6 @@ export default function App() {
         {/* ── 7. Quran Verse ── */}
         <section id="verse">
           <DailyVerse />
-        </section>
-
-        {/* ── 8. Weather ── */}
-        <section id="weather">
-          <MemoizedWeatherCard
-            temperature={weather.temperature}
-            weatherCode={weather.weatherCode}
-            windSpeed={weather.windSpeed}
-            humidity={weather.humidity}
-            visibility={weather.visibility}
-            location={weather.location}
-            loading={weather.loading}
-            error={weather.error}
-          />
         </section>
 
         {/* Juz Tracker & Tasbih (reachable by scroll) */}
