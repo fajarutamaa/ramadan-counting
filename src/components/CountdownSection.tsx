@@ -1,21 +1,46 @@
 import { useState } from "react";
 import { useCountdown } from "@/hooks/useCountdown";
 import { CountdownCard } from "@/components/CountdownCard";
+import { FastingTracker } from "@/components/FastingTracker";
 import { IslamicQuotes } from "@/components/IslamicQuotes";
 import { RamadanArrived } from "@/components/RamadanArrived";
+import type { Coords } from "@/hooks/useGeolocation";
 
 interface CountdownSectionProps {
   ramadanDate: Date | null;
+  coords: Coords | null;
 }
 
-export function CountdownSection({ ramadanDate }: CountdownSectionProps) {
+export function CountdownSection({
+  ramadanDate,
+  coords,
+}: CountdownSectionProps) {
   const [ramadanHasArrived, setRamadanHasArrived] = useState(false);
   const timeLeft = useCountdown(ramadanDate, () => {
     setRamadanHasArrived(true);
   });
 
   if (ramadanHasArrived) {
-    return <RamadanArrived />;
+    return (
+      <div className="space-y-6">
+        <FastingTracker coords={coords} ramadanStart={ramadanDate} />
+        <RamadanArrived />
+      </div>
+    );
+  }
+
+  if (
+    timeLeft.days === 0 &&
+    timeLeft.hours === 0 &&
+    timeLeft.minutes === 0 &&
+    timeLeft.seconds === 0
+  ) {
+    return (
+      <div className="space-y-6">
+        <FastingTracker coords={coords} ramadanStart={ramadanDate} />
+        <RamadanArrived />
+      </div>
+    );
   }
 
   return (
@@ -25,7 +50,7 @@ export function CountdownSection({ ramadanDate }: CountdownSectionProps) {
         role="timer"
         aria-live="polite"
         aria-atomic="true"
-        aria-label={`${timeLeft.days} days, ${timeLeft.hours} hours, ${timeLeft.minutes} minutes, ${timeLeft.seconds} seconds until Ramadan`}
+        aria-label={`${timeLeft.days} days, ${timeLeft.hours} hours, ${timeLeft.minutes} minutes, ${timeLeft.seconds} until Ramadan`}
       >
         <CountdownCard value={timeLeft.days} label="Days" index={0} />
         <CountdownCard value={timeLeft.hours} label="Hours" index={1} />

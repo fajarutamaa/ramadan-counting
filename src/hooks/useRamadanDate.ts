@@ -76,8 +76,7 @@ export function useRamadanDate(coords: Coords | null, baseUrl: string) {
       sessionStorage.setItem("hijriYear", String(year));
     } catch (e) {
       console.error("Failed fetch Ramadan:", e);
-      const nextYear = new Date().getFullYear() + 1;
-      const fallback = new Date(`${nextYear}-03-01T00:00:00+07:00`);
+      const fallback = new Date("2027-02-08T00:00:00+07:00");
       setRamadanDate(fallback);
     }
   }, [coords, baseUrl]);
