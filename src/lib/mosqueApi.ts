@@ -88,7 +88,7 @@ export async function fetchNearbyMosques(
 
   const data: { elements: OsmElement[] } = await res.json();
 
-  return data.elements
+  const mosques = data.elements
     .map(elementToMosque)
     .filter((m): m is Mosque => m !== null)
     .map((m) => ({
@@ -96,6 +96,15 @@ export async function fetchNearbyMosques(
       distance: Math.round(haversine(lat, lon, m.lat, m.lon) * 10) / 10,
     }))
     .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
+
+  // Deduplicate nearby results (same name within 100m)
+  const seen = new Set<string>();
+  return mosques.filter((m) => {
+    const key = `${m.name.toLowerCase()}-${Math.round(m.lat * 1000)}-${Math.round(m.lon * 1000)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export async function searchMosques(query: string): Promise<Mosque[]> {

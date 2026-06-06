@@ -24,20 +24,9 @@ import {
 } from "lucide-react";
 import { fetchNearbyMosques, type Mosque } from "@/lib/mosqueApi";
 import { usePrayerTimes, type PrayerTime } from "@/hooks/usePrayerTimes";
+import { useIslamicEvents } from "@/hooks/useIslamicEvents";
 import { quranVerses } from "@/lib/quranVerses";
-
-const KAABA = { lat: 21.4225, lon: 39.8262 };
-
-function calcQibla(lat: number, lon: number): number {
-  const dLon = ((KAABA.lon - lon) * Math.PI) / 180;
-  const lat1 = (lat * Math.PI) / 180;
-  const lat2 = (KAABA.lat * Math.PI) / 180;
-  const y = Math.sin(dLon);
-  const x = Math.cos(lat1) * Math.tan(lat2) - Math.sin(lat1) * Math.cos(dLon);
-  let bearing = (Math.atan2(y, x) * 180) / Math.PI;
-  bearing = (bearing + 360) % 360;
-  return Math.round(bearing);
-}
+import { calcQibla } from "@/lib/qibla";
 
 function getGreeting(): { text: string; Icon: typeof Sun } {
   const h = new Date().getHours();
@@ -89,64 +78,6 @@ function getTodayVerse() {
   return quranVerses[day % quranVerses.length];
 }
 
-interface IslamicEvent {
-  name: string;
-  date: string;
-  emoji: string;
-  daysUntil: number;
-}
-
-function getNextEvent(): IslamicEvent | null {
-  const now = new Date();
-  const events = [
-    {
-      name: "Isra' Mi'raj",
-      date: new Date(now.getFullYear(), 0, 27),
-      emoji: "🌙",
-    },
-    {
-      name: "Ramadan begins",
-      date: new Date(now.getFullYear(), 1, 28),
-      emoji: "🌙",
-    },
-    {
-      name: "Eid al-Fitr",
-      date: new Date(now.getFullYear(), 3, 29),
-      emoji: "🎉",
-    },
-    {
-      name: "Eid al-Adha",
-      date: new Date(now.getFullYear(), 6, 9),
-      emoji: "🐑",
-    },
-    {
-      name: "Islamic New Year",
-      date: new Date(now.getFullYear(), 6, 30),
-      emoji: "✨",
-    },
-    {
-      name: "Mawlid al-Nabi",
-      date: new Date(now.getFullYear(), 8, 12),
-      emoji: "🕊️",
-    },
-  ];
-
-  for (const e of events) {
-    if (e.date >= now) {
-      const d = Math.ceil((e.date.getTime() - now.getTime()) / 86400000);
-      return {
-        ...e,
-        date: e.date.toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "long",
-        }),
-        daysUntil: d,
-      };
-    }
-  }
-  return null;
-}
-
 interface HomeDashboardProps {
   coords: { lat: number; lon: number } | null;
   location: string;
@@ -170,15 +101,15 @@ export function HomeDashboard({
   weatherLoading,
   weatherError,
 }: HomeDashboardProps) {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL;
   const { times: prayerTimes } = usePrayerTimes(coords);
+  const { currentHijri: hijriInfo, events: islamicEvents } =
+    useIslamicEvents(baseUrl);
   const [nearbySummary, setNearbySummary] = useState<{
     count: number;
     closest: Mosque | null;
   } | null>(null);
-  const [hijriDate, setHijriDate] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
-
-  const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
   // Live clock
   useEffect(() => {
@@ -186,44 +117,9 @@ export function HomeDashboard({
     return () => clearInterval(id);
   }, []);
 
-  // Hijri date
-  useEffect(() => {
-    if (!coords) return;
-    const cached = sessionStorage.getItem("hijriDate");
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (parsed.date === new Date().toDateString()) {
-          setHijriDate(parsed.display);
-          return;
-        }
-      } catch {
-        // ignore cache parse error
-      }
-    }
-    async function fetchHijri() {
-      try {
-        const today = new Date();
-        if (!coords) return;
-        const res = await fetch(
-          `${baseUrl}/gToH/${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}?latitude=${coords.lat}&longitude=${coords.lon}`,
-        );
-        const json = await res.json();
-        if (json.code === 200 && json.data) {
-          const d = json.data.hijri;
-          const display = `${d.day} ${d.month.en} ${d.year} AH`;
-          setHijriDate(display);
-          sessionStorage.setItem(
-            "hijriDate",
-            JSON.stringify({ date: new Date().toDateString(), display }),
-          );
-        }
-      } catch {
-        // ignore fetch error, dashboard still works
-      }
-    }
-    fetchHijri();
-  }, [coords, baseUrl]);
+  const hijriDate = hijriInfo
+    ? `${hijriInfo.day} ${hijriInfo.monthEn} ${hijriInfo.year} AH`
+    : null;
 
   // Nearby mosque summary
   useEffect(() => {
@@ -262,7 +158,24 @@ export function HomeDashboard({
   );
 
   const todayVerse = useMemo(getTodayVerse, []);
-  const nextEvent = useMemo(getNextEvent, []);
+
+  const nextEvent = useMemo(() => {
+    const now = new Date();
+    const upcoming = islamicEvents.find((e) => e.date >= now);
+    if (!upcoming) return null;
+    const diff = Math.ceil(
+      (upcoming.date.getTime() - now.getTime()) / 86400000,
+    );
+    return {
+      name: upcoming.name,
+      date: upcoming.date.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+      }),
+      emoji: upcoming.emoji,
+      daysUntil: diff,
+    };
+  }, [islamicEvents]);
 
   const scrollTo = useCallback((id: string) => {
     const el = document.getElementById(id);

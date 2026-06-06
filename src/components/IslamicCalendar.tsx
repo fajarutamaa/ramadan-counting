@@ -1,83 +1,11 @@
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { CalendarDays, Moon, Star, Loader2 } from "lucide-react";
 import { fadeInUp } from "@/lib/animations";
+import { useIslamicEvents } from "@/hooks/useIslamicEvents";
 
 interface IslamicCalendarProps {
   coords: { lat: number; lon: number } | null;
-}
-
-interface HijriDate {
-  day: number;
-  month: string;
-  monthEn: string;
-  year: number;
-}
-
-interface IslamicEvent {
-  name: string;
-  date: Date;
-  type: "event" | "holiday";
-  emoji: string;
-}
-
-function getIslamicEvents(year: number): IslamicEvent[] {
-  return [
-    {
-      name: "Isra' Mi'raj",
-      date: new Date(year, 0, 27),
-      type: "event",
-      emoji: "🌙",
-    },
-    {
-      name: "Ramadan begins",
-      date: new Date(year, 1, 28),
-      type: "event",
-      emoji: "🌙",
-    },
-    {
-      name: "Nuzul Al-Qur'an",
-      date: new Date(year, 3, 17),
-      type: "event",
-      emoji: "📖",
-    },
-    {
-      name: "Eid al-Fitr",
-      date: new Date(year, 3, 29),
-      type: "holiday",
-      emoji: "🎉",
-    },
-    {
-      name: "Day of Arafah",
-      date: new Date(year, 6, 8),
-      type: "event",
-      emoji: "🤲",
-    },
-    {
-      name: "Eid al-Adha",
-      date: new Date(year, 6, 9),
-      type: "holiday",
-      emoji: "🐑",
-    },
-    {
-      name: "Islamic New Year",
-      date: new Date(year, 6, 30),
-      type: "event",
-      emoji: "✨",
-    },
-    {
-      name: "Day of Ashura",
-      date: new Date(year, 7, 9),
-      type: "event",
-      emoji: "🕯️",
-    },
-    {
-      name: "Mawlid al-Nabi",
-      date: new Date(year, 8, 12),
-      type: "event",
-      emoji: "🕊️",
-    },
-  ];
 }
 
 function formatDate(date: Date): string {
@@ -89,68 +17,23 @@ function formatDate(date: Date): string {
   });
 }
 
-export function IslamicCalendar({ coords }: IslamicCalendarProps) {
-  const [hijriDate, setHijriDate] = useState<HijriDate | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
+export function IslamicCalendar(_props: IslamicCalendarProps) {
+  void _props;
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
-
-  useEffect(() => {
-    async function fetchHijri() {
-      setLoading(true);
-      setError(null);
-      try {
-        const today = new Date();
-        const adj = coords
-          ? `latitude=${coords.lat}&longitude=${coords.lon}`
-          : "";
-        const res = await fetch(
-          `${baseUrl}/gToH/${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}?${adj}`,
-        );
-        const json = await res.json();
-        if (json.code === 200 && json.data) {
-          const d = json.data.hijri;
-          setHijriDate({
-            day: Number(d.day),
-            month: d.month.ar,
-            monthEn: d.month.en,
-            year: Number(d.year),
-          });
-        } else {
-          throw new Error("Invalid API response");
-        }
-      } catch {
-        setError("Could not load Islamic date.");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchHijri();
-  }, [baseUrl, coords]);
+  const { currentHijri, events, loading, error } = useIslamicEvents(baseUrl);
 
   const now = useMemo(() => new Date(), []);
-  const currentYear = now.getFullYear();
 
-  const events = useMemo(() => {
-    const allEvents = getIslamicEvents(currentYear);
-    const future = allEvents.filter((e) => e.date >= now);
-
+  const upcomingEvents = useMemo(() => {
+    const future = events.filter((e) => e.date >= now);
     if (future.length > 0) return future;
-    return getIslamicEvents(currentYear + 1);
-  }, [currentYear, now]);
+    return events;
+  }, [events, now]);
 
   const nextRamadan = useMemo<Date | null>(() => {
-    const thisYear = getIslamicEvents(currentYear).find((e) =>
-      e.name.toLowerCase().includes("ramadan begins"),
-    );
-    if (thisYear && thisYear.date >= now) return thisYear.date;
-
-    const nextYear = getIslamicEvents(currentYear + 1).find((e) =>
-      e.name.toLowerCase().includes("ramadan begins"),
-    );
-    return nextYear ? nextYear.date : null;
-  }, [currentYear, now]);
+    const ramadan = events.find((e) => e.id === "ramadan");
+    return ramadan ? ramadan.date : null;
+  }, [events]);
 
   const ramadanCountdown = useMemo(() => {
     if (!nextRamadan) return null;
@@ -187,17 +70,17 @@ export function IslamicCalendar({ coords }: IslamicCalendarProps) {
           </div>
         ) : error ? (
           <p className="text-sm text-muted-foreground">{error}</p>
-        ) : hijriDate ? (
+        ) : currentHijri ? (
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center shrink-0">
               <Moon className="w-5 h-5 text-rose-600 dark:text-rose-400" />
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">
-                {hijriDate.day} {hijriDate.month} {hijriDate.year} AH
+                {currentHijri.day} {currentHijri.monthAr} {currentHijri.year} AH
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {hijriDate.monthEn} {hijriDate.year}
+                {currentHijri.monthEn} {currentHijri.year}
               </p>
             </div>
           </div>
@@ -244,9 +127,9 @@ export function IslamicCalendar({ coords }: IslamicCalendarProps) {
             Upcoming Events
           </h4>
           <div className="space-y-2">
-            {events.slice(0, 5).map((event, i) => (
+            {upcomingEvents.slice(0, 5).map((event, i) => (
               <motion.div
-                key={`${event.name}-${i}`}
+                key={event.id}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.05 }}

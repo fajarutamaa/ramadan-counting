@@ -79,6 +79,7 @@ export function usePrayerTimes(coords: Coords | null): PrayerTimesData {
             times[0].isNext = true;
           } else {
             times[times.length - 1].isCurrent = true;
+            times[0].isNext = true;
           }
 
           setPrayerData({
