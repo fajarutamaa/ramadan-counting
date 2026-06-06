@@ -3,24 +3,24 @@ import { CheckCircle2 } from "lucide-react";
 
 const reasons = [
   {
-    title: "Beautiful Minimalist Design",
+    title: "Accurate & Reliable",
     description:
-      "Clean, uncluttered interface with a modern emerald palette that's easy on the eyes during late-night worship.",
+      "Location-aware Islamic tools with accurate calculations powered by trusted data sources.",
   },
   {
-    title: "Privacy-First",
+    title: "Beautiful & Modern",
+    description:
+      "Clean design focused on usability and simplicity. A premium experience inspired by modern design principles.",
+  },
+  {
+    title: "Fast & Responsive",
+    description:
+      "Optimized for all devices — from phones to desktops. Lightweight and snappy.",
+  },
+  {
+    title: "Privacy First",
     description:
       "All your data stays on your device. No accounts, no tracking, no servers — just localStorage.",
-  },
-  {
-    title: "Works Offline-Friendly",
-    description:
-      "Core features like the tasbih, juz tracker, and fasting check-in work without an internet connection.",
-  },
-  {
-    title: "Location-Aware",
-    description:
-      "Automatic prayer times and weather based on your location. No manual config needed.",
   },
   {
     title: "Dark Mode Included",
@@ -36,7 +36,7 @@ const reasons = [
 
 export function LandingWhyChoose() {
   return (
-    <section className="py-16 sm:py-24 px-4 sm:px-6">
+    <section id="why-choose" className="py-16 sm:py-24 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -46,7 +46,7 @@ export function LandingWhyChoose() {
           className="text-center mb-10 sm:mb-14"
         >
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-            Why Choose This App?
+            Why Choose Nur?
           </h2>
           <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-lg mx-auto">
             Thoughtfully designed for the modern Muslim who values simplicity
@@ -54,7 +54,7 @@ export function LandingWhyChoose() {
           </p>
         </motion.div>
 
-        <div className="space-y-3 sm:space-y-4">
+        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
           {reasons.map(({ title, description }, i) => (
             <motion.div
               key={title}

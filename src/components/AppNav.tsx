@@ -3,14 +3,18 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  Home,
+  Clock,
+  MapPin,
+  Compass,
+  CalendarDays,
+  Sparkles,
+  Info,
   Sun,
   BookText,
-  TrendingUp,
   BookMarked,
   Circle,
-  Timer,
-  Clock,
-  Home,
+  Heart,
   Menu,
   X,
 } from "lucide-react";
@@ -20,19 +24,36 @@ import { cn } from "@/lib/utils";
 interface NavSection {
   id: string;
   label: string;
-  icon: typeof Sun;
+  icon: typeof Home;
+  mobileLabel?: string;
 }
 
-const sections: NavSection[] = [
+const desktopSections: NavSection[] = [
   { id: "home", label: "Home", icon: Home },
-  { id: "weather", label: "Weather", icon: Sun },
-  { id: "verse", label: "Verse", icon: BookText },
-  { id: "progress", label: "Progress", icon: TrendingUp },
-  { id: "quran", label: "Quran", icon: BookMarked },
-  { id: "tasbih", label: "Tasbih", icon: Circle },
-  { id: "countdown", label: "Countdown", icon: Timer },
-  { id: "prayer", label: "Prayer", icon: Clock },
+  {
+    id: "prayer-times",
+    label: "Prayer Times",
+    icon: Clock,
+    mobileLabel: "Prayer",
+  },
+  { id: "mosques", label: "Mosques", icon: MapPin },
+  { id: "qibla", label: "Qibla", icon: Compass },
+  { id: "calendar", label: "Calendar", icon: CalendarDays },
+  { id: "features", label: "Features", icon: Sparkles },
+  { id: "about", label: "About", icon: Info },
 ];
+
+const allSections: NavSection[] = [
+  ...desktopSections,
+  { id: "why-choose", label: "Why Choose", icon: Heart },
+  { id: "weather", label: "Weather", icon: Sun },
+  { id: "verse", label: "Daily Verse", icon: BookText },
+  { id: "quran", label: "Juz Tracker", icon: BookMarked },
+  { id: "tasbih", label: "Tasbih", icon: Circle },
+];
+
+const mobilePrimary: NavSection[] = desktopSections.slice(0, 4);
+const mobileRest: NavSection[] = allSections.slice(4);
 
 export function AppNav() {
   const [activeId, setActiveId] = useState("");
@@ -49,7 +70,7 @@ export function AppNav() {
   }, []);
 
   useEffect(() => {
-    const ids = sections.map((s) => s.id);
+    const ids = allSections.map((s) => s.id);
     const elements = ids
       .map((id) => document.getElementById(id))
       .filter(Boolean);
@@ -74,11 +95,13 @@ export function AppNav() {
     setMobileOpen(false);
     const el = document.getElementById(id);
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollTo({
+        top: el.getBoundingClientRect().top + window.scrollY - 80,
+        behavior: "smooth",
+      });
     }
   }, []);
 
-  // Close mobile menu on Escape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMobileOpen(false);
@@ -87,7 +110,6 @@ export function AppNav() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  // Lock body scroll when mobile menu is open
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
     return () => {
@@ -115,16 +137,16 @@ export function AppNav() {
             className="flex items-center gap-2 shrink-0 mr-4"
           >
             <span className="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 tracking-tight">
-              Ramadan
+              Nur
             </span>
             <span className="hidden sm:inline text-sm font-medium text-muted-foreground">
-              Counting
+              Muslim Companion
             </span>
           </button>
 
           {/* Desktop nav items */}
           <div className="hidden md:flex items-center gap-0.5 flex-1 justify-center">
-            {sections.map(({ id, label, icon: Icon }) => {
+            {desktopSections.map(({ id, label, icon: Icon }) => {
               const isActive = activeId === id;
               return (
                 <button
@@ -150,7 +172,7 @@ export function AppNav() {
             })}
           </div>
 
-          {/* Right side: Theme toggle + Mobile hamburger */}
+          {/* Right side */}
           <div className="flex items-center gap-2 ml-auto shrink-0">
             <ThemeToggleDropdown />
             <button
@@ -169,7 +191,51 @@ export function AppNav() {
         </div>
       </motion.nav>
 
-      {/* Mobile menu overlay */}
+      {/* Mobile bottom nav */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/90 backdrop-blur-lg border-t border-border px-2 pb-safe">
+        <div className="flex items-center justify-around h-14">
+          {mobilePrimary.map(({ id, label, icon: Icon, mobileLabel }) => {
+            const isActive = activeId === id;
+            return (
+              <button
+                key={id}
+                onClick={() => scrollTo(id)}
+                className={cn(
+                  "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all",
+                  isActive
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="text-[10px] font-medium">
+                  {mobileLabel ?? label}
+                </span>
+                {isActive && (
+                  <span className="w-4 h-0.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                )}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className={cn(
+              "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all",
+              mobileOpen
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Menu className="w-4 h-4" />
+            <span className="text-[10px] font-medium">More</span>
+            {mobileOpen && (
+              <span className="w-4 h-0.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile drawer overlay */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
@@ -179,13 +245,11 @@ export function AppNav() {
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-40 md:hidden"
           >
-            {/* Backdrop */}
             <div
               className="absolute inset-0 bg-black/30 backdrop-blur-sm"
               onClick={() => setMobileOpen(false)}
             />
 
-            {/* Menu panel */}
             <motion.div
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
@@ -197,7 +261,7 @@ export function AppNav() {
                 className="flex flex-col gap-1"
                 aria-label="Mobile navigation"
               >
-                {sections.map(({ id, label, icon: Icon }) => {
+                {mobileRest.map(({ id, label, icon: Icon }) => {
                   const isActive = activeId === id;
                   return (
                     <button
@@ -218,6 +282,26 @@ export function AppNav() {
                     </button>
                   );
                 })}
+
+                {/* Separator */}
+                <div className="my-3 border-t border-border" />
+
+                {/* Primary items in drawer (duplicated for convenience) */}
+                {mobilePrimary.map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => scrollTo(id)}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-left",
+                      activeId === id
+                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary",
+                    )}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{label}</span>
+                  </button>
+                ))}
               </nav>
             </motion.div>
           </motion.div>

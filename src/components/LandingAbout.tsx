@@ -3,7 +3,7 @@ import { Moon } from "lucide-react";
 
 export function LandingAbout() {
   return (
-    <section className="py-16 sm:py-24 px-4 sm:px-6">
+    <section id="about" className="py-16 sm:py-24 px-4 sm:px-6">
       <div className="max-w-3xl mx-auto text-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -15,17 +15,18 @@ export function LandingAbout() {
             <Moon className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-            About This Application
+            About Nur
           </h2>
           <p className="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
-            Ramadan Counting is a thoughtfully crafted digital companion
-            designed to help Muslims worldwide prepare for and experience the
-            blessed month of Ramadan with greater intention and organization.
+            Nur is a thoughtfully crafted digital companion designed to help
+            Muslims stay connected to their faith every day. From accurate
+            prayer times and nearby mosques to Quran reading and dhikr, every
+            feature is built with simplicity and purpose.
           </p>
           <p className="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
-            From a live countdown and daily verse inspiration to fasting
-            tracking, Quran juz progress, and a digital tasbih — every feature
-            is built with simplicity, beauty, and purpose in mind.
+            Whether you are looking for Qibla direction, tracking your daily
+            worship, or finding Islamic events — Nur brings everything together
+            in one beautiful, modern experience.
           </p>
         </motion.div>
 
@@ -38,7 +39,7 @@ export function LandingAbout() {
           className="mt-10 grid grid-cols-3 gap-4 sm:gap-8 max-w-lg mx-auto"
         >
           {[
-            { value: "7+", label: "Features" },
+            { value: "8+", label: "Features" },
             { value: "100%", label: "Free" },
             { value: "Open", label: "Source" },
           ].map(({ value, label }) => (

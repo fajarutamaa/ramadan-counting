@@ -1,18 +1,40 @@
 import { motion } from "framer-motion";
-import { Timer, Moon, BookText, BookMarked, Circle, Sun } from "lucide-react";
+import {
+  Clock,
+  MapPin,
+  Compass,
+  CalendarDays,
+  BookText,
+  BookMarked,
+  Circle,
+  Moon,
+  Sun,
+} from "lucide-react";
 
 const features = [
   {
-    icon: Timer,
-    title: "Live Countdown",
+    icon: Clock,
+    title: "Prayer Times",
     description:
-      "Real-time countdown to Ramadan with smooth flip animations and automatic year detection.",
+      "Accurate daily prayer schedules based on your location with automatic detection of current and next prayers.",
   },
   {
-    icon: Moon,
-    title: "Fasting Tracker",
+    icon: MapPin,
+    title: "Nearby Mosques",
     description:
-      "Track your daily fasts with live iftar/suhoor countdown, streaks, and check-in calendar.",
+      "Find mosques near you with distance, address, and Google Maps directions — powered by OpenStreetMap.",
+  },
+  {
+    icon: Compass,
+    title: "Qibla Direction",
+    description:
+      "Find the precise direction of the Kaaba from anywhere in the world with an elegant compass interface.",
+  },
+  {
+    icon: CalendarDays,
+    title: "Islamic Calendar",
+    description:
+      "Track Hijri dates, upcoming Islamic events, and Ramadan countdown with accurate data.",
   },
   {
     icon: BookText,
@@ -24,13 +46,19 @@ const features = [
     icon: BookMarked,
     title: "Juz Tracker",
     description:
-      "Track your Quran reading across 30 juz with yearly history and completion stats.",
+      "Track your Quran reading across 30 juz with yearly history, completion stats, and Khatam celebrations.",
   },
   {
     icon: Circle,
     title: "Digital Tasbih",
     description:
-      "Count dhikr with haptic-like feedback, multiple dhikr types, and daily goal progress.",
+      "Count dhikr with haptic-like feedback, multiple dhikr types, daily goals, and progress tracking.",
+  },
+  {
+    icon: Moon,
+    title: "Ramadan Tools",
+    description:
+      "Fasting tracker with live iftar/suhoor countdown, streak tracking, and countdown to the blessed month.",
   },
   {
     icon: Sun,
@@ -52,10 +80,11 @@ export function LandingFeatures() {
           className="text-center mb-10 sm:mb-14"
         >
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-            Key Features
+            Everything You Need
           </h2>
           <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-lg mx-auto">
-            Everything you need for a mindful and organized Ramadan experience.
+            A complete set of Islamic tools designed for your daily spiritual
+            journey.
           </p>
         </motion.div>
 
@@ -66,7 +95,7 @@ export function LandingFeatures() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
-              transition={{ duration: 0.4, delay: i * 0.06 }}
+              transition={{ duration: 0.4, delay: i * 0.05 }}
               className="group relative bg-card border border-border rounded-xl p-5 sm:p-6 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5"
             >
               <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center mb-4 transition-colors group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900/60">
