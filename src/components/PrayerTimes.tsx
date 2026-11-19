@@ -1,49 +1,27 @@
-import { useMemo, useCallback } from "react";
+import { useCallback } from "react";
 import { motion } from "framer-motion";
-import { usePrayerTimes } from "@/hooks/usePrayerTimes";
-import type { Coords } from "@/hooks/useGeolocation";
+import type { PrayerTimesData } from "@/hooks/usePrayerTimes";
 import { fadeInUp } from "@/lib/animations";
 import { Clock, MapPin, Compass, CalendarDays } from "lucide-react";
 
 interface PrayerTimesProps {
-  coords: Coords | null;
+  hasLocation: boolean;
+  prayers: PrayerTimesData;
 }
 
-function getTimeToPrayer(timeStr: string): string | null {
-  const [h, m] = timeStr.split(":").map(Number);
-  const prayer = new Date();
-  prayer.setHours(h, m, 0, 0);
-  const now = new Date();
-  const diff = prayer.getTime() - now.getTime();
-  if (diff <= 0) return null;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return null;
-  if (mins < 60) return `${mins} min`;
-  const hours = Math.floor(mins / 60);
-  const rem = mins % 60;
-  return `${hours}h ${rem}m`;
-}
-
-export function PrayerTimes({ coords }: PrayerTimesProps) {
-  const { times, loading, error } = usePrayerTimes(coords);
-
-  const nextPrayer = useMemo(() => times.find((p) => p.isNext), [times]);
-
-  const countdown = useMemo(
-    () => (nextPrayer ? getTimeToPrayer(nextPrayer.time) : null),
-    [nextPrayer],
-  );
+export function PrayerTimes({ hasLocation, prayers }: PrayerTimesProps) {
+  const { times, loading, error, nextPrayer, minutesUntilNext } = prayers;
 
   const scrollTo = useCallback((id: string) => {
     const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (el) el.scrollIntoView({ block: "start" });
   }, []);
 
   if (loading) {
     return (
-      <div className="bg-card border border-border rounded-xl p-6">
+      <div className="rounded-2xl border bg-card p-5 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Clock className="w-4 h-4 text-muted-foreground" />
+          <Clock className="size-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">
             Prayer Times
           </h3>
@@ -57,18 +35,40 @@ export function PrayerTimes({ coords }: PrayerTimesProps) {
     );
   }
 
-  if (error || !times.length) return null;
+  if (error || !times.length) {
+    return (
+      <div className="rounded-2xl border bg-card p-5 sm:p-6">
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <Clock aria-hidden="true" className="size-4 text-primary" />
+          Prayer times
+        </h3>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {hasLocation
+            ? "The prayer schedule is temporarily unavailable."
+            : "Choose a city or allow device location to see your prayer schedule."}
+        </p>
+        {!hasLocation && (
+          <a
+            href="#location-control"
+            className="mt-2 inline-block text-sm font-semibold text-primary hover:underline"
+          >
+            Find your location
+          </a>
+        )}
+      </div>
+    );
+  }
 
   return (
     <motion.div
-      className="bg-card border border-border rounded-xl overflow-hidden"
+      className="overflow-hidden rounded-2xl border bg-card"
       variants={fadeInUp}
       initial="hidden"
       animate="visible"
     >
-      <div className="p-6">
+      <div className="p-5 sm:p-6">
         <div className="flex items-center gap-2 mb-5">
-          <Clock className="w-4 h-4 text-muted-foreground" />
+          <Clock className="size-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">
             Today's Prayer Times
           </h3>
@@ -80,18 +80,12 @@ export function PrayerTimes({ coords }: PrayerTimesProps) {
               key={prayer.name}
               className={`relative rounded-lg p-2.5 sm:p-3 text-center transition-colors ${
                 prayer.isCurrent
-                  ? "bg-emerald-600 dark:bg-emerald-500 text-white"
+                  ? "bg-primary text-primary-foreground"
                   : prayer.isNext
                     ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-700"
                     : "bg-secondary text-secondary-foreground"
               }`}
             >
-              {prayer.isCurrent && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-60" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-                </span>
-              )}
               <div className="text-[10px] sm:text-[11px] font-medium mb-0.5 sm:mb-1 opacity-80">
                 {prayer.name}
               </div>
@@ -117,25 +111,25 @@ export function PrayerTimes({ coords }: PrayerTimesProps) {
       {/* Contextual connections */}
       {nextPrayer && (
         <div className="border-t border-border px-6 py-3 flex items-center gap-3 flex-wrap">
-          {countdown && !countdown.includes("h") && (
+          {minutesUntilNext !== null && minutesUntilNext < 60 && (
             <button
               onClick={() => scrollTo("mosques")}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+              className="inline-flex min-h-8 items-center gap-1.5 text-xs font-medium text-primary hover:underline"
             >
               <MapPin className="w-3 h-3" />
-              {nextPrayer.name} in {countdown} — Nearby mosques
+              {nextPrayer.name} in {minutesUntilNext} min — Nearby mosques
             </button>
           )}
           <button
             onClick={() => scrollTo("qibla")}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-purple-600 dark:text-purple-400 hover:underline"
+            className="inline-flex min-h-8 items-center gap-1.5 text-xs font-medium text-primary hover:underline"
           >
             <Compass className="w-3 h-3" />
             Need to pray? Open Qibla
           </button>
           <button
             onClick={() => scrollTo("calendar")}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-rose-600 dark:text-rose-400 hover:underline"
+            className="inline-flex min-h-8 items-center gap-1.5 text-xs font-medium text-primary hover:underline"
           >
             <CalendarDays className="w-3 h-3" />
             Islamic Calendar

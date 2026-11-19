@@ -3,18 +3,18 @@ import { Moon } from "lucide-react";
 
 export function LandingAbout() {
   return (
-    <section id="about" className="py-16 sm:py-24 px-4 sm:px-6">
-      <div className="max-w-3xl mx-auto text-center">
+    <section id="about" className="page-shell pb-12 sm:pb-16">
+      <div className="rounded-3xl border bg-card px-5 py-8 text-center sm:p-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.5 }}
         >
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 mb-5">
-            <Moon className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+          <div className="mb-4 inline-grid size-10 place-items-center rounded-xl bg-secondary text-primary">
+            <Moon aria-hidden="true" className="size-5" />
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+          <h2 className="font-display text-3xl tracking-tight sm:text-4xl">
             About Nur
           </h2>
           <p className="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
@@ -22,11 +22,6 @@ export function LandingAbout() {
             Muslims stay connected to their faith every day. From accurate
             prayer times and nearby mosques to Quran reading and dhikr, every
             feature is built with simplicity and purpose.
-          </p>
-          <p className="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
-            Whether you are looking for Qibla direction, tracking your daily
-            worship, or finding Islamic events — Nur brings everything together
-            in one beautiful, modern experience.
           </p>
         </motion.div>
 
@@ -44,7 +39,7 @@ export function LandingAbout() {
             { value: "Open", label: "Source" },
           ].map(({ value, label }) => (
             <div key={label} className="text-center">
-              <div className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+              <div className="font-display text-xl text-primary sm:text-2xl">
                 {value}
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">

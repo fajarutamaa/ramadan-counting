@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
+  ArrowRight,
   Compass,
   MapPin,
   Clock,
@@ -23,15 +24,20 @@ import {
   CloudLightning,
 } from "lucide-react";
 import { fetchNearbyMosques, type Mosque } from "@/lib/mosqueApi";
-import { usePrayerTimes, type PrayerTime } from "@/hooks/usePrayerTimes";
+import type { PrayerTime, PrayerTimesData } from "@/hooks/usePrayerTimes";
 import { useIslamicEvents } from "@/hooks/useIslamicEvents";
 import { quranVerses } from "@/lib/quranVerses";
 import { calcQibla } from "@/lib/qibla";
+import { QuickAccess } from "@/components/QuickAccess";
+import { cn } from "@/lib/utils";
+import {
+  LocationPicker,
+  type LocationPickerProps,
+} from "@/components/LocationPicker";
 
 /* ── Helpers ── */
 
-function getGreeting(): { text: string; Icon: typeof Sun } {
-  const h = new Date().getHours();
+function getGreeting(h: number): { text: string; Icon: typeof Sun } {
   if (h < 5) return { text: "Blessed Night", Icon: Moon };
   if (h < 12) return { text: "Good Morning", Icon: Sunrise };
   if (h < 17) return { text: "Good Afternoon", Icon: Sun };
@@ -39,15 +45,8 @@ function getGreeting(): { text: string; Icon: typeof Sun } {
   return { text: "Peaceful Evening", Icon: CloudMoon };
 }
 
-function getTimeToPrayer(timeStr: string): string {
-  const [h, m] = timeStr.split(":").map(Number);
-  const prayer = new Date();
-  prayer.setHours(h, m, 0, 0);
-  const now = new Date();
-  const diff = prayer.getTime() - now.getTime();
-  if (diff <= 0) return "Now";
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Now";
+function formatCountdown(mins: number | null): string {
+  if (mins === null) return "Tomorrow";
   if (mins < 60) return `${mins} min`;
   const hours = Math.floor(mins / 60);
   const rem = mins % 60;
@@ -96,7 +95,7 @@ interface HeroSectionProps {
   coords: { lat: number; lon: number } | null;
   formattedTime: string;
   hijriDate: string | null;
-  scrollTo: (id: string) => void;
+  locating: boolean;
 }
 
 function HeroSection({
@@ -106,80 +105,53 @@ function HeroSection({
   coords,
   formattedTime,
   hijriDate,
-  scrollTo,
+  locating,
 }: HeroSectionProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="relative"
-    >
-      <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-emerald-500/5 dark:bg-emerald-400/5 rounded-full blur-[100px] pointer-events-none" />
-
-      <div className="relative z-10 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-            <GreetingIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div>
-            <h1 className="text-base sm:text-lg font-semibold text-foreground">
-              {greetingText}
-            </h1>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              {location ||
-                (coords
-                  ? `${coords.lat.toFixed(2)}, ${coords.lon.toFixed(2)}`
-                  : "Enable location")}
-            </p>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className="text-sm font-semibold text-foreground">
-            {formattedTime}
-          </p>
-          {hijriDate && (
-            <p className="text-[11px] text-muted-foreground">{hijriDate}</p>
-          )}
-        </div>
+    <div className="self-center">
+      <p className="section-label flex items-center gap-2 text-primary">
+        <GreetingIcon aria-hidden="true" className="size-4" />
+        {greetingText}
+      </p>
+      <h1 className="font-display mt-4 text-[clamp(2.75rem,6vw,4.75rem)] leading-[1.02] tracking-[-0.045em]">
+        Your daily Muslim{" "}
+        <em className="font-normal text-primary">companion.</em>
+      </h1>
+      <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
+        Prayer times, the Qibla, and space for daily reflection, all in one
+        place.
+      </p>
+      <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-muted-foreground sm:text-sm">
+        <span className="inline-flex items-center gap-1.5">
+          <MapPin
+            aria-hidden="true"
+            className="size-3.5 shrink-0 text-primary"
+          />
+          {location ||
+            (coords
+              ? `${coords.lat.toFixed(2)}, ${coords.lon.toFixed(2)}`
+              : locating
+                ? "Finding device location…"
+                : "Location not set")}
+        </span>
+        <span className="inline-flex items-center gap-1.5 tabular-nums">
+          <Clock aria-hidden="true" className="size-3.5 text-primary" />
+          {formattedTime}
+        </span>
+        {hijriDate && <span>{hijriDate}</span>}
       </div>
-
-      <div className="relative z-10 mt-8 sm:mt-10 text-center">
-        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground tracking-tight leading-tight">
-          Your Daily Muslim Companion
-        </h2>
-        <p className="mt-4 text-sm sm:text-base text-muted-foreground max-w-xl mx-auto leading-relaxed">
-          Accurate prayer times, nearby mosques, Qibla direction, Islamic
-          calendar, and essential tools for your daily spiritual journey.
-        </p>
-        <div className="mt-6 flex items-center justify-center gap-3">
-          <button
-            onClick={() => scrollTo("prayer-times")}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 text-sm font-semibold transition-all shadow-lg shadow-emerald-600/25"
-          >
-            <Clock className="w-4 h-4" />
-            Explore Tools
-          </button>
-          <button
-            onClick={() => scrollTo("features")}
-            className="inline-flex items-center gap-2 rounded-xl bg-secondary hover:bg-secondary/80 text-secondary-foreground px-6 py-2.5 text-sm font-semibold transition-all"
-          >
-            <Sparkles className="w-4 h-4" />
-            View Features
-          </button>
-        </div>
-      </div>
-    </motion.div>
+    </div>
   );
 }
 
 interface PrayerCardProps {
   currentPrayer: PrayerTime | undefined;
-  nextPrayer: PrayerTime | undefined;
-  nextPrayerCountdown: string | null;
-  location: string;
-  hijriDate: string | null;
+  nextPrayer: PrayerTimesData["nextPrayer"];
+  nextPrayerCountdown: string;
+  hasLocation: boolean;
+  locating: boolean;
+  locationPicker: LocationPickerProps;
+  prayerLoading: boolean;
   temperature: number;
   weatherCode: number;
   windSpeed: number;
@@ -187,15 +159,16 @@ interface PrayerCardProps {
   visibility: number;
   weatherLoading: boolean;
   weatherError: string | null;
-  scrollTo: (id: string) => void;
 }
 
 function PrayerCard({
   currentPrayer,
   nextPrayer,
   nextPrayerCountdown,
-  location,
-  hijriDate,
+  hasLocation,
+  locating,
+  locationPicker,
+  prayerLoading,
   temperature,
   weatherCode,
   windSpeed,
@@ -203,154 +176,121 @@ function PrayerCard({
   visibility,
   weatherLoading,
   weatherError,
-  scrollTo,
 }: PrayerCardProps) {
   const WeatherIcon = getWeatherIcon(weatherCode);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.1 }}
-      className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-700 dark:from-emerald-500 dark:to-emerald-700 p-5 sm:p-6 shadow-lg shadow-emerald-900/20 hover:shadow-xl hover:shadow-emerald-900/30 transition-all duration-300 hover:-translate-y-0.5"
+    <section
+      aria-labelledby="prayer-summary"
+      className="prayer-panel relative isolate flex min-h-64 flex-col overflow-hidden rounded-3xl p-5 text-white sm:p-7"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(255,255,255,0.08)_0%,transparent_60%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(255,255,255,0.04)_0%,transparent_50%)]" />
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M16 0L32 16L16 32L0 16Z' fill='white' fill-opacity='0.5'/%3E%3C/svg%3E")`,
-          backgroundSize: "32px 32px",
-        }}
-      />
       <svg
-        className="absolute -bottom-6 -right-6 w-48 h-48 text-white opacity-[0.03] pointer-events-none"
-        viewBox="0 0 100 100"
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-9 -bottom-28 -z-10 w-60 text-[#e2c790]/20 sm:w-72"
+        viewBox="0 0 240 280"
         fill="none"
+        stroke="currentColor"
       >
-        <path
-          d="M50 15 L55 22 L55 35 L65 35 L65 40 L55 40 L55 55 L65 55 L65 70 L50 70 L35 70 L35 55 L45 55 L45 40 L35 40 L35 35 L45 35 L45 22 L50 15Z M35 70 L30 70 L30 75 L70 75 L70 70 L65 70 M42 75 L42 85 L58 85 L58 75"
-          fill="currentColor"
-        />
+        <path d="M20 280V148C20 83 72 57 120 20c48 37 100 63 100 128v132" />
+        <path d="M35 280V149c0-56 44-81 85-111 41 30 85 55 85 111v131" />
+        <path d="M50 280V151c0-48 36-69 70-95 34 26 70 47 70 95v129" />
+        <path d="M65 280V153c0-39 28-59 55-79 27 20 55 40 55 79v127" />
       </svg>
 
-      <div className="relative z-10 flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <p className="text-[11px] font-medium text-emerald-100/80 uppercase tracking-wider">
-              {currentPrayer ? "Current Prayer" : "Loading..."}
-            </p>
+      <h2
+        id="prayer-summary"
+        className="section-label flex items-center gap-2 text-[#e2c790]"
+      >
+        <Clock aria-hidden="true" className="size-4" />
+        Prayer today
+      </h2>
+      <div className="my-5 flex flex-1 flex-wrap items-start justify-between gap-4">
+        {currentPrayer || nextPrayer ? (
+          <>
             {currentPrayer && (
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/10 text-emerald-100/80">
-                Ongoing
-              </span>
+              <div>
+                <p className="text-xs font-medium text-white/75">
+                  Current prayer
+                </p>
+                <p className="font-display mt-1 text-4xl">
+                  {currentPrayer.name}
+                </p>
+                <p className="mt-1 text-sm text-white/75">
+                  {currentPrayer.time}
+                </p>
+              </div>
             )}
-          </div>
-          <p className="text-2xl sm:text-3xl font-bold text-white mt-0.5">
-            {currentPrayer?.name ?? "—"}
-          </p>
-          <div className="w-8 h-0.5 bg-emerald-400/50 rounded-full my-2" />
-          <p className="text-sm text-emerald-100/80">
-            {currentPrayer?.time ?? ""}
-          </p>
-        </div>
-
-        {nextPrayer && (
-          <div className="text-right">
-            <p className="text-[11px] font-medium text-emerald-100/80 uppercase tracking-wider">
-              Next: {nextPrayer.name}
-            </p>
+            {nextPrayer && (
+              <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-2.5">
+                <p className="text-xs text-white/80">
+                  Next · {nextPrayer.name}
+                </p>
+                <p className="mt-1 text-lg font-semibold tabular-nums">
+                  {nextPrayerCountdown}
+                </p>
+                {nextPrayer.time && (
+                  <p className="text-xs text-white/75">{nextPrayer.time}</p>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <div>
+            <p className="font-display text-3xl">Local prayer times</p>
             <p
-              className="text-2xl sm:text-3xl font-bold text-white mt-0.5 tabular-nums"
-              style={{ textShadow: "0 0 20px rgba(255,255,255,0.12)" }}
+              role="status"
+              className="mt-2 max-w-xs text-sm leading-relaxed text-white/80"
             >
-              {nextPrayerCountdown}
-            </p>
-            <p className="text-sm text-emerald-100/80 mt-1">
-              {nextPrayer.time}
+              {locating
+                ? "Finding your device location… You can also choose a city."
+                : !hasLocation
+                  ? "Choose a city or allow device location to see your local schedule."
+                  : prayerLoading
+                    ? "Loading your local prayer schedule…"
+                    : "Your local schedule is temporarily unavailable."}
             </p>
           </div>
         )}
       </div>
 
-      <div className="relative z-10 mt-4 pt-3 border-t border-emerald-500/40">
-        {!weatherLoading && !weatherError && (
-          <div className="flex items-center justify-between mb-3 pb-3 border-b border-emerald-500/20">
-            <div className="flex items-center gap-2">
-              <WeatherIcon className="w-4 h-4 text-emerald-100/80" />
-              <span className="text-sm text-emerald-100/80">
-                {temperature}° · {getWeatherDesc(weatherCode)}
-              </span>
-            </div>
-            <div className="flex items-center gap-3 text-[11px] text-emerald-100/60">
+      <div className="border-t border-white/20 pt-3">
+        {hasLocation && !weatherLoading && !weatherError && (
+          <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/80">
+            <span className="inline-flex items-center gap-1.5">
+              <WeatherIcon aria-hidden="true" className="size-4" />
+              {temperature}° · {getWeatherDesc(weatherCode)}
+            </span>
+            <div className="flex flex-wrap items-center gap-2.5">
               <span className="inline-flex items-center gap-1">
-                <Wind className="w-2.5 h-2.5" />
+                <Wind aria-label="Wind" className="size-3" />
                 {windSpeed} km/h
               </span>
               <span className="inline-flex items-center gap-1">
-                <Droplets className="w-2.5 h-2.5" />
+                <Droplets aria-label="Humidity" className="size-3" />
                 {humidity}%
               </span>
               <span className="inline-flex items-center gap-1">
-                <Eye className="w-2.5 h-2.5" />
+                <Eye aria-label="Visibility" className="size-3" />
                 {visibility} km
               </span>
             </div>
           </div>
         )}
 
-        <div className="flex items-center gap-3">
-          <QuickLink
-            label="All Times"
-            icon={Clock}
-            onClick={() => scrollTo("prayer-times")}
-          />
-          <QuickLink
-            label="Qibla"
-            icon={Compass}
-            onClick={() => scrollTo("qibla")}
-          />
-          <QuickLink
-            label="Mosques"
-            icon={MapPin}
-            onClick={() => scrollTo("mosques")}
-          />
-          <span className="ml-auto flex items-center gap-2">
-            {location && (
-              <span className="text-[10px] text-emerald-100/60 inline-flex items-center gap-1">
-                <MapPin className="w-2.5 h-2.5" />
-                {location}
-              </span>
-            )}
-            {hijriDate && (
-              <span className="text-[10px] text-emerald-100/60">
-                {hijriDate}
-              </span>
-            )}
-          </span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <LocationPicker {...locationPicker} hasLocation={hasLocation} />
+          {hasLocation && (
+            <a
+              href="#prayer-times"
+              className="inline-flex min-h-9 items-center gap-2 rounded-sm text-sm font-semibold hover:underline"
+            >
+              View prayer schedule
+              <ArrowRight aria-hidden="true" className="size-4" />
+            </a>
+          )}
         </div>
       </div>
-    </motion.div>
-  );
-}
-
-function QuickLink({
-  label,
-  icon: Icon,
-  onClick,
-}: {
-  label: string;
-  icon: typeof Clock;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-100 hover:text-white transition-colors"
-    >
-      <Icon className="w-3 h-3" />
-      {label}
-    </button>
+    </section>
   );
 }
 
@@ -374,20 +314,16 @@ function QuickInfoGrid({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.2 }}
-      className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+      className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-4"
     >
       <InfoCard
         icon={Compass}
-        iconBg="bg-purple-100 dark:bg-purple-900/30"
-        iconColor="text-purple-600 dark:text-purple-400"
         label="Qibla"
         value={qibla !== null ? `${qibla}°` : "—"}
         onClick={() => scrollTo("qibla")}
       />
       <InfoCard
         icon={MapPin}
-        iconBg="bg-emerald-100 dark:bg-emerald-900/30"
-        iconColor="text-emerald-600 dark:text-emerald-400"
         label="Mosques"
         value={nearbySummary ? `${nearbySummary.count} nearby` : "—"}
         subtitle={
@@ -399,15 +335,11 @@ function QuickInfoGrid({
       />
       <InfoCard
         icon={Moon}
-        iconBg="bg-rose-100 dark:bg-rose-900/30"
-        iconColor="text-rose-600 dark:text-rose-400"
         label="Hijri"
         value={hijriDate?.split(" ").slice(0, 3).join(" ") || "—"}
       />
       <InfoCard
         icon={Star}
-        iconBg="bg-amber-100 dark:bg-amber-900/30"
-        iconColor="text-amber-600 dark:text-amber-400"
         label="Next Event"
         value={nextEvent ? nextEvent.name : "—"}
         subtitle={
@@ -425,8 +357,6 @@ function QuickInfoGrid({
 
 interface InfoCardProps {
   icon: typeof Sun;
-  iconBg: string;
-  iconColor: string;
   label: string;
   value: string;
   subtitle?: string;
@@ -435,39 +365,28 @@ interface InfoCardProps {
 
 function InfoCard({
   icon: Icon,
-  iconBg,
-  iconColor,
   label,
   value,
   subtitle,
   onClick,
 }: InfoCardProps) {
   const Wrapper = onClick ? "button" : "div";
-  const btnProps = onClick
-    ? {
-        onClick,
-        className:
-          "relative group flex flex-col items-center gap-2 rounded-xl bg-card border border-border/80 p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-emerald-500/30 shadow-sm",
-      }
-    : {
-        className:
-          "relative group flex flex-col items-center gap-2 rounded-xl bg-card border border-border/80 p-4 shadow-sm",
-      };
-
   return (
-    <Wrapper {...btnProps}>
-      <div
-        className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center group-hover:scale-105 transition-transform`}
-      >
-        <Icon className={`w-4 h-4 ${iconColor}`} />
-      </div>
-      <div className="text-center">
-        <p className="text-xs text-muted-foreground">{label}</p>
+    <Wrapper
+      onClick={onClick}
+      className={cn(
+        "min-w-0 bg-card p-3 text-left focus-visible:-outline-offset-2 sm:p-4",
+        onClick && "cursor-pointer transition-colors hover:bg-secondary",
+      )}
+    >
+      <p className="mb-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />
+        {label}
+      </p>
+      <div>
         <p className="text-sm font-semibold text-foreground">{value}</p>
         {subtitle && (
-          <p className="text-[10px] text-muted-foreground truncate max-w-[100px]">
-            {subtitle}
-          </p>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
         )}
       </div>
     </Wrapper>
@@ -485,7 +404,7 @@ function DailyVerseCard({ verse, scrollTo }: DailyVerseCardProps) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.3 }}
-      className="rounded-xl bg-card border border-border/80 p-5 sm:p-6 shadow-sm hover:shadow-lg transition-all duration-300 hover:border-emerald-500/30"
+      className="rounded-2xl border bg-card p-5 sm:p-6"
     >
       <div className="flex items-center gap-2 mb-3">
         <BookText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -493,9 +412,9 @@ function DailyVerseCard({ verse, scrollTo }: DailyVerseCardProps) {
           Daily Verse
         </span>
       </div>
-      <p className="text-sm sm:text-base text-foreground leading-relaxed italic">
+      <blockquote className="font-display text-lg leading-relaxed">
         &ldquo;{verse.text}&rdquo;
-      </p>
+      </blockquote>
       <div className="mt-3 flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
           {verse.surah} · {verse.verse}
@@ -519,12 +438,14 @@ function DailyVerseCard({ verse, scrollTo }: DailyVerseCardProps) {
 
 function SmartRecommendations({
   nextPrayer,
-  nextPrayerCountdown,
+  minutesUntilNext,
+  isFriday,
   nearbyCount,
   scrollTo,
 }: {
-  nextPrayer: PrayerTime | undefined;
-  nextPrayerCountdown: string | null;
+  nextPrayer: PrayerTimesData["nextPrayer"];
+  minutesUntilNext: number | null;
+  isFriday: boolean;
   nearbyCount: number;
   scrollTo: (id: string) => void;
 }) {
@@ -536,32 +457,25 @@ function SmartRecommendations({
       desc: string;
       action: string;
       href: string;
-      color: string;
-      bg: string;
     }> = [];
 
     if (
       nextPrayer &&
-      nextPrayerCountdown &&
-      !nextPrayerCountdown.includes("h") &&
-      !nextPrayerCountdown.includes("Now")
+      minutesUntilNext !== null &&
+      minutesUntilNext <= 30 &&
+      nearbyCount > 0
     ) {
-      const mins = parseInt(nextPrayerCountdown);
-      if (mins <= 30 && nearbyCount > 0) {
-        items.push({
-          id: "mosque-nearby",
-          icon: MapPin,
-          title: `${nextPrayer.name} begins in ${nextPrayerCountdown}`,
-          desc: `${nearbyCount} mosque${nearbyCount > 1 ? "s" : ""} available nearby`,
-          action: "Find Mosque",
-          href: "mosques",
-          color: "text-emerald-600 dark:text-emerald-400",
-          bg: "bg-emerald-100 dark:bg-emerald-900/30",
-        });
-      }
+      items.push({
+        id: "mosque-nearby",
+        icon: MapPin,
+        title: `${nextPrayer.name} begins in ${minutesUntilNext} min`,
+        desc: `${nearbyCount} mosque${nearbyCount > 1 ? "s" : ""} available nearby`,
+        action: "Find Mosque",
+        href: "mosques",
+      });
     }
 
-    if (new Date().getDay() === 5) {
+    if (isFriday) {
       items.push({
         id: "jumuah",
         icon: Clock,
@@ -569,24 +483,11 @@ function SmartRecommendations({
         desc: "Check Jumu'ah prayer times at nearby mosques",
         action: "View Mosques",
         href: "mosques",
-        color: "text-blue-600 dark:text-blue-400",
-        bg: "bg-blue-100 dark:bg-blue-900/30",
       });
     }
 
-    items.push({
-      id: "qibla-prompt",
-      icon: Compass,
-      title: "Need to pray?",
-      desc: "Open the Qibla compass to find the direction of the Kaaba",
-      action: "Open Qibla",
-      href: "qibla",
-      color: "text-purple-600 dark:text-purple-400",
-      bg: "bg-purple-100 dark:bg-purple-900/30",
-    });
-
     return items;
-  }, [nextPrayer, nextPrayerCountdown, nearbyCount]);
+  }, [nextPrayer, minutesUntilNext, nearbyCount, isFriday]);
 
   if (recommendations.length === 0) return null;
 
@@ -595,10 +496,10 @@ function SmartRecommendations({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.35 }}
-      className="space-y-3"
+      className="rounded-2xl border bg-card p-5 sm:p-6"
     >
-      <div className="flex items-center gap-2">
-        <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+      <div className="mb-3 flex items-center gap-2">
+        <Sparkles className="size-4 text-primary" />
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Suggestions
         </span>
@@ -609,18 +510,16 @@ function SmartRecommendations({
           <button
             key={r.id}
             onClick={() => scrollTo(r.href)}
-            className="w-full group flex items-start gap-3 rounded-xl bg-card border border-border/80 p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-emerald-500/30 shadow-sm text-left"
+            className="flex w-full flex-wrap items-start gap-3 rounded-xl border p-3 text-left transition-colors hover:bg-secondary"
           >
-            <div
-              className={`w-10 h-10 rounded-xl ${r.bg} flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform`}
-            >
-              <r.icon className={`w-4 h-4 ${r.color}`} />
+            <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
+              <r.icon className="size-4 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground">{r.title}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{r.desc}</p>
             </div>
-            <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400 mt-0.5">
+            <span className="mt-0.5 shrink-0 text-xs font-medium text-primary">
               {r.action} →
             </span>
           </button>
@@ -635,6 +534,9 @@ function SmartRecommendations({
 interface HomeDashboardProps {
   coords: { lat: number; lon: number } | null;
   location: string;
+  locating: boolean;
+  locationPicker: LocationPickerProps;
+  prayers: PrayerTimesData;
   temperature: number;
   weatherCode: number;
   windSpeed: number;
@@ -649,6 +551,9 @@ interface HomeDashboardProps {
 export function HomeDashboard({
   coords,
   location,
+  locating,
+  locationPicker,
+  prayers,
   temperature,
   weatherCode,
   windSpeed,
@@ -658,17 +563,25 @@ export function HomeDashboard({
   weatherError,
 }: HomeDashboardProps) {
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
-  const { times: prayerTimes } = usePrayerTimes(coords);
+  const {
+    times,
+    loading: prayerLoading,
+    nextPrayer,
+    minutesUntilNext,
+  } = prayers;
+  const timeZone = locationPicker.city?.timeZone;
   const { currentHijri: hijriInfo, events: islamicEvents } =
     useIslamicEvents(baseUrl);
-  const [nearbySummary, setNearbySummary] = useState<{
+  const [nearby, setNearby] = useState<{
+    coords: NonNullable<HomeDashboardProps["coords"]>;
     count: number;
     closest: Mosque | null;
   } | null>(null);
+  const nearbySummary = nearby?.coords === coords ? nearby : null;
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
+    const id = setInterval(() => setNow(new Date()), 10_000);
     return () => clearInterval(id);
   }, []);
 
@@ -678,33 +591,33 @@ export function HomeDashboard({
 
   useEffect(() => {
     if (!coords) return;
+    let ignore = false;
     fetchNearbyMosques(coords.lat, coords.lon, 3000)
       .then((results) => {
-        setNearbySummary({
+        if (ignore) return;
+        setNearby({
+          coords,
           count: results.length,
           closest: results[0] ?? null,
         });
       })
       .catch(() => {});
+    return () => {
+      ignore = true;
+    };
   }, [coords]);
 
-  const greeting = useMemo(getGreeting, []);
-  const { text: greetingText, Icon: GreetingIcon } = greeting;
-
-  const currentPrayer = useMemo(
-    () => prayerTimes.find((p) => p.isCurrent),
-    [prayerTimes],
+  const hour = Number(
+    now.toLocaleTimeString("en-GB", {
+      timeZone,
+      hour: "numeric",
+      hourCycle: "h23",
+    }),
   );
-  const nextPrayer = useMemo(
-    () => prayerTimes.find((p) => p.isNext),
-    [prayerTimes],
-  );
-
-  const nextPrayerCountdown = useMemo(
-    () => (nextPrayer ? getTimeToPrayer(nextPrayer.time) : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [nextPrayer, now],
-  );
+  const { text: greetingText, Icon: GreetingIcon } = getGreeting(hour);
+  const isFriday =
+    now.toLocaleDateString("en-US", { timeZone, weekday: "short" }) === "Fri";
+  const currentPrayer = times.find((p) => p.isCurrent);
 
   const qibla = useMemo(
     () => (coords ? calcQibla(coords.lat, coords.lon) : null),
@@ -733,7 +646,7 @@ export function HomeDashboard({
 
   const scrollTo = useCallback((id: string) => {
     const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (el) el.scrollIntoView({ block: "start" });
   }, []);
 
   const formattedTime = useMemo(
@@ -742,54 +655,64 @@ export function HomeDashboard({
         hour: "numeric",
         minute: "2-digit",
         hour12: true,
+        timeZone,
       }),
-    [now],
+    [now, timeZone],
   );
 
   return (
-    <div className="space-y-4 sm:space-y-5">
-      <HeroSection
-        greetingText={greetingText}
-        GreetingIcon={GreetingIcon}
-        location={location}
-        coords={coords}
-        formattedTime={formattedTime}
-        hijriDate={hijriDate}
-        scrollTo={scrollTo}
-      />
+    <div className="space-y-7 sm:space-y-9">
+      <div className="grid gap-6 md:grid-cols-[1.1fr_1fr] md:items-stretch lg:gap-12">
+        <HeroSection
+          greetingText={greetingText}
+          GreetingIcon={GreetingIcon}
+          location={location}
+          coords={coords}
+          formattedTime={formattedTime}
+          hijriDate={hijriDate}
+          locating={locating}
+        />
 
-      <PrayerCard
-        currentPrayer={currentPrayer}
-        nextPrayer={nextPrayer}
-        nextPrayerCountdown={nextPrayerCountdown}
-        location={location}
-        hijriDate={hijriDate}
-        temperature={temperature}
-        weatherCode={weatherCode}
-        windSpeed={windSpeed}
-        humidity={humidity}
-        visibility={visibility}
-        weatherLoading={weatherLoading}
-        weatherError={weatherError}
-        scrollTo={scrollTo}
-      />
+        <PrayerCard
+          currentPrayer={currentPrayer}
+          nextPrayer={nextPrayer}
+          nextPrayerCountdown={formatCountdown(minutesUntilNext)}
+          hasLocation={!!coords}
+          locating={locating}
+          locationPicker={locationPicker}
+          prayerLoading={prayerLoading}
+          temperature={temperature}
+          weatherCode={weatherCode}
+          windSpeed={windSpeed}
+          humidity={humidity}
+          visibility={visibility}
+          weatherLoading={weatherLoading}
+          weatherError={weatherError}
+        />
+      </div>
 
-      <QuickInfoGrid
-        qibla={qibla}
-        nearbySummary={nearbySummary}
-        hijriDate={hijriDate}
-        nextEvent={nextEvent}
-        scrollTo={scrollTo}
-      />
+      <QuickAccess />
 
-      <DailyVerseCard verse={todayVerse} scrollTo={scrollTo} />
+      <div className="space-y-3">
+        <h2 className="section-label">At a glance</h2>
+        <QuickInfoGrid
+          qibla={qibla}
+          nearbySummary={nearbySummary}
+          hijriDate={hijriDate}
+          nextEvent={nextEvent}
+          scrollTo={scrollTo}
+        />
 
-      <SmartRecommendations
-        nextPrayer={nextPrayer}
-        nextPrayerCountdown={nextPrayerCountdown}
-        nearbyCount={nearbySummary?.count ?? 0}
-        scrollTo={scrollTo}
-      />
+        <DailyVerseCard verse={todayVerse} scrollTo={scrollTo} />
+
+        <SmartRecommendations
+          nextPrayer={nextPrayer}
+          minutesUntilNext={minutesUntilNext}
+          isFriday={isFriday}
+          nearbyCount={nearbySummary?.count ?? 0}
+          scrollTo={scrollTo}
+        />
+      </div>
     </div>
   );
 }

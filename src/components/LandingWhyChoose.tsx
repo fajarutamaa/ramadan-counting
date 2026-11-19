@@ -36,25 +36,21 @@ const reasons = [
 
 export function LandingWhyChoose() {
   return (
-    <section id="why-choose" className="py-16 sm:py-24 px-4 sm:px-6">
-      <div className="max-w-4xl mx-auto">
+    <section id="why-choose" className="page-shell py-12 sm:py-16">
+      <div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-10 sm:mb-14"
+          className="mb-6 sm:mb-8"
         >
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+          <h2 className="font-display text-3xl tracking-tight sm:text-4xl">
             Why Choose Nur?
           </h2>
-          <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-lg mx-auto">
-            Thoughtfully designed for the modern Muslim who values simplicity
-            and purpose.
-          </p>
         </motion.div>
 
-        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
           {reasons.map(({ title, description }, i) => (
             <motion.div
               key={title}
@@ -62,9 +58,12 @@ export function LandingWhyChoose() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.35, delay: i * 0.04 }}
-              className="flex items-start gap-4 p-4 sm:p-5 rounded-xl bg-card border border-border transition-all hover:shadow-sm"
+              className="flex items-start gap-3 border-t py-4"
             >
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              <CheckCircle2
+                aria-hidden="true"
+                className="mt-0.5 size-4 shrink-0 text-primary"
+              />
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-1">
                   {title}

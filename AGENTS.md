@@ -1,44 +1,23 @@
-# Ramadan Counting
+# Nur (Ramadan Counting)
 
-## Stack
+## Setup and checks
 
-- React 19 + TypeScript 5.8 + Vite 7 + Tailwind CSS 4 + shadcn/ui
-- Framer Motion for animations, lucide-react for icons
+- Use Node 22.12+ and `npm ci`; `.npmrc` already enables legacy peer resolution. Node 18 in `README.md` and `netifly.toml` is below Vite 7's requirement.
+- Run `npm run lint` and `npm run build` before committing. For typechecking alone, run `npx tsc -b` (checks both app and Vite config); plain `tsc --noEmit` at the root doesn't check the referenced projects.
+- There is no configured test runner; `test-results/.last-run.json` is an artifact, not a runnable suite.
+- Husky's pre-commit hook requires Bun even with an npm install: `bunx --bun lint-staged` runs ESLint with zero warnings on staged JS/TS, then Prettier rewrites staged files. Use Conventional Commits; no `commit-msg` hook is checked in.
+- The static build goes to `dist`. The checked-in `netifly.toml` is misspelled and won't be auto-discovered as `netlify.toml`.
 
-## Commands
+## App wiring
 
-- `npm run dev` — start Vite dev server
-- `npm run build` — runs `tsc -b && vite build` (project references build, both tsconfig.app.json + tsconfig.node.json)
-- `npm run lint` — ESLint with typescript-eslint, react-hooks, react-refresh
-- `npm run preview` — Vite preview of production build
-- No tests (no test framework in deps)
+- `src/main.tsx` mounts `App` under `StrictMode`, `ErrorBoundary`, `ThemeProvider`, and `MotionConfig`. There's no router: when changing section IDs in `src/App.tsx`, check `AppNav`, `QuickAccess`, and `Footer` for matching targets.
+- `App` prefers `localStorage.selectedCity` over GPS and passes the city's time zone to the shared prayer schedule. To test a fresh location prompt, clear both `localStorage.selectedCity` and `sessionStorage.coords`. Hijri/Ramadan caches also use `sessionStorage`; tracker data uses `localStorage`.
+- `@/` maps to `src/` in Vite and TypeScript. shadcn/ui primitives live in `src/components/ui/`; Tailwind v4 tokens and the `.dark` variant live in `src/index.css`, not the `tailwind.config.ts` named in `components.json`. `ThemeProvider` sets `.dark` on `<html>`.
 
-## Commit convention
+## Local API configuration
 
-- Husky pre-commit hook: `bunx --bun lint-staged` (requires bun installed)
-- lint-staged runs `eslint --max-warnings=0` + `prettier --write` on JS/TS/JSX/TSX; `prettier -w` on HTML/JSON/CSS/MD
-- commitlint enforces conventional commits: feat, fix, docs, chore, style, refactor, ci, test, revert, perf, vercel
-
-## Key config
-
-- `.npmrc`: `legacy-peer-deps=true` — always use `npm install` with that flag
-- Path alias `@/` → `src/*` (Vite resolve + tsconfig paths)
-- Tailwind v4 CSS-first: `@import "tailwindcss"` in `src/index.css`, no tailwind.config — uses `@tailwindcss/vite` plugin
-- Dark mode: `.dark` class on `<html>`, managed by `<ThemeProvider>` (localStorage key: `theme`)
-
-## External APIs (via env vars)
-
-- `VITE_API_BASE_URL` — aladhan.com (Hijri calendar, prayer times)
-- `VITE_API_WEATHER_URL` — open-meteo.com
-- `VITE_API_LOCATION_URL` — nominatim.openstreetmap.org (reverse geocoding)
-- App caches some data in `sessionStorage` (coords, ramadanDate, hijriYear)
-
-## Architecture
-
-- Entry: `src/main.tsx` → `StrictMode > ErrorBoundary > ThemeProvider > App`
-- Single page, no routing. All state derived from browser geolocation.
-- shadcn/ui components live in `src/components/ui/`, installed via `components.json`
-
-## Deploy
-
-- Netlify: `npm install && npm run build`, publish `dist`, Node 18
+- Create `.env.local` directly; there is no tracked env template or fallback for these base URLs:
+  - `VITE_API_BASE_URL=https://api.aladhan.com/v1` (Hijri calendar and Ramadan)
+  - `VITE_API_WEATHER_URL=https://api.open-meteo.com/v1`
+  - `VITE_API_LOCATION_URL=https://nominatim.openstreetmap.org` (reverse geocoding)
+- Changing those variables does not redirect prayer/fasting timing requests, mosque lookup, or manual city search: those use hardcoded endpoints. City search uses Open-Meteo geocoding (`src/lib/citySearch.ts`), not the Nominatim reverse-geocoding URL.
