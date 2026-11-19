@@ -70,22 +70,19 @@ const features = [
 
 export function LandingFeatures() {
   return (
-    <section id="features" className="py-16 sm:py-24 px-4 sm:px-6">
-      <div className="max-w-5xl mx-auto">
+    <section id="features" className="border-y bg-secondary/45 py-12 sm:py-16">
+      <div className="page-shell">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-10 sm:mb-14"
+          className="mb-6 sm:mb-8"
         >
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-            Everything You Need
+          <p className="section-label">Features</p>
+          <h2 className="font-display mt-2 text-3xl tracking-tight sm:text-4xl">
+            Made for daily practice
           </h2>
-          <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-lg mx-auto">
-            A complete set of Islamic tools designed for your daily spiritual
-            journey.
-          </p>
         </motion.div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
@@ -96,17 +93,17 @@ export function LandingFeatures() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.4, delay: i * 0.05 }}
-              className="group relative bg-card border border-border rounded-xl p-5 sm:p-6 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5"
+              className="flex items-start gap-3 rounded-xl border bg-card p-4 sm:p-5"
             >
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center mb-4 transition-colors group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900/60">
-                <Icon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-secondary text-primary">
+                <Icon aria-hidden="true" className="size-4" />
               </div>
-              <h3 className="text-sm font-semibold text-foreground mb-1.5">
-                {title}
-              </h3>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                {description}
-              </p>
+              <div>
+                <h3 className="mb-1 text-sm font-semibold">{title}</h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {description}
+                </p>
+              </div>
             </motion.div>
           ))}
         </div>

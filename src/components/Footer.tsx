@@ -1,4 +1,11 @@
-import { Github, Linkedin, Facebook, Mail, ExternalLink } from "lucide-react";
+import {
+  Github,
+  Linkedin,
+  Facebook,
+  Mail,
+  ExternalLink,
+  MoonStar,
+} from "lucide-react";
 
 const social = [
   { href: "https://github.com/fajarutamaa", icon: Github, label: "GitHub" },
@@ -47,36 +54,24 @@ const footerSections = [
       { label: "Daily Verse", href: "#verse" },
     ],
   },
-  {
-    title: "Connect",
-    links: social.map((s) => ({ label: s.label, href: s.href })),
-  },
 ];
 
 export function Footer() {
-  const scrollTo = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   return (
-    <footer className="border-t border-border mt-12 sm:mt-16">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+    <footer className="border-t bg-card">
+      <div className="page-shell py-8 sm:py-12">
         {/* Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 sm:gap-12">
+        <div className="grid grid-cols-2 gap-6 sm:grid-cols-[1.4fr_1fr_1fr_1fr] sm:gap-8">
           {/* Brand */}
           <div className="col-span-2 sm:col-span-1">
             <a
               href="#home"
-              onClick={(e) => {
-                e.preventDefault();
-                scrollTo("home");
-              }}
-              className="flex items-center gap-2 mb-3"
+              className="mb-3 inline-flex items-center gap-2 rounded-lg"
             >
-              <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 tracking-tight">
-                Nur
+              <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
+                <MoonStar aria-hidden="true" className="size-4" />
               </span>
+              <span className="font-display text-xl tracking-tight">Nur</span>
             </a>
             <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
               Your daily Muslim companion — prayer times, mosques, Qibla,
@@ -86,9 +81,7 @@ export function Footer() {
 
           {footerSections.map((section) => (
             <div key={section.title}>
-              <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">
-                {section.title}
-              </h4>
+              <h2 className="section-label mb-3">{section.title}</h2>
               <ul className="space-y-2">
                 {section.links.map((link) => {
                   const isExternal =
@@ -100,13 +93,7 @@ export function Footer() {
                         href={link.href}
                         target={isExternal ? "_blank" : undefined}
                         rel={isExternal ? "noopener noreferrer" : undefined}
-                        onClick={(e) => {
-                          if (!isExternal && link.href.startsWith("#")) {
-                            e.preventDefault();
-                            scrollTo(link.href.slice(1));
-                          }
-                        }}
-                        className="text-xs text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                        className="text-sm text-muted-foreground transition-colors hover:text-primary"
                       >
                         {link.label}
                       </a>
@@ -128,7 +115,7 @@ export function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={label}
-                className="flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all"
+                className="flex size-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
               >
                 <Icon className="w-4 h-4" />
               </a>

@@ -3,7 +3,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Ubuntu Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -39,22 +40,22 @@
 
 :root {
   --radius: 0.5rem;
-  --background: oklch(0.99 0.002 160);
+  --background: oklch(0.98 0.009 90);
   --foreground: oklch(0.15 0.005 170);
-  --card: oklch(1 0 0);
+  --card: oklch(0.997 0.004 90);
   --card-foreground: oklch(0.15 0.005 170);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.15 0.005 170);
-  --primary: oklch(0.48 0.14 160);
+  --primary: oklch(0.42 0.085 165);
   --primary-foreground: oklch(0.98 0.002 160);
-  --secondary: oklch(0.96 0.003 160);
+  --secondary: oklch(0.94 0.019 150);
   --secondary-foreground: oklch(0.25 0.005 170);
   --muted: oklch(0.96 0.003 160);
-  --muted-foreground: oklch(0.55 0.005 170);
+  --muted-foreground: oklch(0.43 0.022 160);
   --accent: oklch(0.96 0.003 160);
   --accent-foreground: oklch(0.25 0.005 170);
   --destructive: oklch(0.58 0.2 30);
-  --border: oklch(0.92 0.004 170);
+  --border: oklch(0.9 0.012 120);
   --input: oklch(0.92 0.004 170);
   --ring: oklch(0.68 0.14 160);
 }
@@ -66,12 +67,12 @@
   --card-foreground: oklch(0.93 0.003 160);
   --popover: oklch(0.16 0.005 170);
   --popover-foreground: oklch(0.93 0.003 160);
-  --primary: oklch(0.68 0.14 160);
+  --primary: oklch(0.79 0.088 163);
   --primary-foreground: oklch(0.13 0.005 170);
   --secondary: oklch(0.22 0.005 170);
   --secondary-foreground: oklch(0.93 0.003 160);
   --muted: oklch(0.22 0.005 170);
-  --muted-foreground: oklch(0.6 0.005 170);
+  --muted-foreground: oklch(0.72 0.015 165);
   --accent: oklch(0.22 0.005 170);
   --accent-foreground: oklch(0.93 0.003 160);
   --destructive: oklch(0.6 0.2 30);
@@ -88,156 +89,28 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family: "Ubuntu Sans", ui-sans-serif, system-ui, sans-serif;
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
   }
 }
 
-/* ── Grid background overlay ── */
-.bg-grid {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
+@utility page-shell {
+  @apply mx-auto w-full max-w-6xl px-4 sm:px-8;
 }
 
-.bg-grid::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(var(--border) 1px, transparent 1px),
-    linear-gradient(90deg, var(--border) 1px, transparent 1px);
-  background-size: 60px 60px;
-  background-position: -1px -1px;
-  opacity: 0.4;
+@utility section-label {
+  @apply text-xs font-bold tracking-[0.14em] text-muted-foreground uppercase;
 }
 
-.bg-grid::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(var(--border) 0.5px, transparent 0.5px),
-    linear-gradient(90deg, var(--border) 0.5px, transparent 0.5px);
-  background-size: 20px 20px;
-  background-position: -1px -1px;
-  opacity: 0.15;
+.prayer-panel {
+  background: linear-gradient(125deg, #102f28, #1b4b3e);
 }
 
-.dark .bg-grid::before {
-  opacity: 0.12;
-}
-
-.dark .bg-grid::after {
-  opacity: 0.06;
-}
-
-/* ── Geometric decorative lines ── */
-.bg-geo-lines {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-
-.bg-geo-lines::before {
-  content: "";
-  position: absolute;
-  top: 20%;
-  left: 5%;
-  width: 1px;
-  height: 60%;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    var(--border) 50%,
-    transparent 100%
-  );
-  opacity: 0.15;
-}
-
-.bg-geo-lines::after {
-  content: "";
-  position: absolute;
-  top: 15%;
-  right: 8%;
-  width: 1px;
-  height: 70%;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    var(--border) 50%,
-    transparent 100%
-  );
-  opacity: 0.1;
-}
-
-.dark .bg-geo-lines::before,
-.dark .bg-geo-lines::after {
-  opacity: 0.08;
-}
-
-/* ── Subtle gradient overlay ── */
-.bg-gradient-overlay {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(
-      ellipse 70% 40% at 50% -5%,
-      oklch(0.85 0.06 160 / 0.18) 0%,
-      transparent 70%
-    ),
-    radial-gradient(
-      ellipse 50% 30% at 80% 30%,
-      oklch(0.85 0.06 160 / 0.08) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      ellipse 30% 30% at 20% 60%,
-      oklch(0.85 0.06 160 / 0.05) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse 60% 40% at 50% 80%,
-      oklch(0.7 0.08 190 / 0.04) 0%,
-      transparent 60%
-    );
-}
-
-.dark .bg-gradient-overlay {
-  background:
-    radial-gradient(
-      ellipse 70% 40% at 50% -5%,
-      oklch(0.6 0.12 160 / 0.15) 0%,
-      transparent 70%
-    ),
-    radial-gradient(
-      ellipse 50% 30% at 80% 30%,
-      oklch(0.55 0.1 170 / 0.06) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      ellipse 30% 30% at 20% 60%,
-      oklch(0.5 0.08 160 / 0.04) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse 60% 40% at 50% 80%,
-      oklch(0.5 0.1 190 / 0.05) 0%,
-      transparent 60%
-    );
-}
-
-/* ── Section-specific radial accent ── */
-.bg-radial-accent {
-  position: absolute;
-  pointer-events: none;
-  border-radius: 50%;
-  filter: blur(80px);
+.prayer-panel :focus-visible:not(dialog *) {
+  outline-color: #e2c790;
 }
 
 /* ── Animations ── */
@@ -283,8 +156,13 @@
 }
 
 html {
-  transition: background-color 0.2s ease;
-  scroll-behavior: smooth;
+  scroll-padding-top: 5.5rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 /* Safe area padding for mobile bottom nav */
@@ -304,5 +182,5 @@ html {
 
 .leaflet-popup-content {
   margin: 10px 14px !important;
-  font-family: "Ubuntu Sans", system-ui, sans-serif !important;
+  font-family: var(--font-sans) !important;
 }

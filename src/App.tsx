@@ -1,9 +1,8 @@
 "use client";
 
-import { memo } from "react";
+import { useState } from "react";
 import { AppNav } from "@/components/AppNav";
 import { HomeDashboard } from "@/components/HomeDashboard";
-import { QuickAccess } from "@/components/QuickAccess";
 import { LandingAbout } from "@/components/LandingAbout";
 import { LandingFeatures } from "@/components/LandingFeatures";
 import { LandingWhyChoose } from "@/components/LandingWhyChoose";
@@ -18,44 +17,51 @@ import { IslamicCalendar } from "@/components/IslamicCalendar";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useWeather } from "@/hooks/useWeather";
 import { useRamadanDate } from "@/hooks/useRamadanDate";
-
-const MemoizedPrayerTimes = memo(PrayerTimes);
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { usePrayerTimes } from "@/hooks/usePrayerTimes";
+import type { CityLocation } from "@/lib/citySearch";
 
 export default function App() {
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
   const weatherBaseUrl = import.meta.env.VITE_API_WEATHER_URL;
   const locationBaseUrl = import.meta.env.VITE_API_LOCATION_URL;
 
-  const coords = useGeolocation();
+  const [city, setCity] = useLocalStorage<CityLocation | null>(
+    "selectedCity",
+    null,
+  );
+  const [deviceRequest, setDeviceRequest] = useState(0);
+  const deviceLocation = useGeolocation(!city, deviceRequest);
+  const coords = city ?? deviceLocation.coords;
+  const prayers = usePrayerTimes(coords, city?.timeZone);
   const weather = useWeather(
-    coords.coords,
+    coords,
     weatherBaseUrl,
     locationBaseUrl,
-    90000,
+    city?.name,
   );
-  const { hijriYear } = useRamadanDate(coords.coords, baseUrl);
+  const { hijriYear } = useRamadanDate(coords, baseUrl);
+
+  function handleUseDeviceLocation() {
+    setDeviceRequest((request) => request + 1);
+    setCity(null);
+  }
 
   return (
-    <div className="min-h-screen bg-background relative">
-      <div className="bg-grid" />
-      <div className="bg-geo-lines" />
-      <div className="bg-gradient-overlay" />
+    <div className="min-h-screen bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
       <AppNav />
-
-      {/* ── 1. Home Hero ── */}
-      <section id="home" className="relative overflow-hidden">
-        <div
-          className="bg-radial-accent w-[500px] h-[500px] -top-40 -right-40 opacity-40"
-          style={{ background: "oklch(0.78 0.1 160 / 0.12)" }}
-        />
-        <div
-          className="bg-radial-accent w-[400px] h-[400px] -bottom-20 -left-40 opacity-30"
-          style={{ background: "oklch(0.78 0.1 160 / 0.08)" }}
-        />
-        <div className="max-w-2xl mx-auto px-4 sm:px-8 pt-20 sm:pt-24 pb-4">
+      <main>
+        <section id="home" className="page-shell pt-10 pb-14 sm:pt-16 sm:pb-20">
           <HomeDashboard
-            coords={coords.coords}
-            location={weather.location}
+            coords={coords}
+            location={city?.name ?? weather.location}
+            locating={!city && deviceLocation.loading}
+            locationPicker={{
+              city,
+              onSelectCity: setCity,
+              onUseDeviceLocation: handleUseDeviceLocation,
+            }}
+            prayers={prayers}
             temperature={weather.temperature}
             weatherCode={weather.weatherCode}
             windSpeed={weather.windSpeed}
@@ -64,57 +70,54 @@ export default function App() {
             weatherLoading={weather.loading}
             weatherError={weather.error}
           />
-        </div>
-        {/* ── 2. Quick Actions ── */}
-        <QuickAccess />
-      </section>
-
-      {/* ── 3. Prayer Times ── */}
-      <div className="max-w-2xl mx-auto px-4 sm:px-8 space-y-6 pb-16 md:pb-0">
-        <section id="prayer-times">
-          <MemoizedPrayerTimes coords={coords.coords} />
         </section>
 
-        {/* ── 4. Nearby Mosques ── */}
-        <section id="mosques">
-          <MosqueSection coords={coords.coords} />
+        <section
+          id="tools"
+          aria-labelledby="tools-heading"
+          className="page-shell pb-12 sm:pb-20"
+        >
+          <div className="border-t pt-8 sm:pt-12">
+            <p className="section-label">Daily essentials</p>
+            <h2
+              id="tools-heading"
+              className="font-display mt-2 mb-6 text-3xl tracking-tight sm:text-4xl"
+            >
+              Tools for your day
+            </h2>
+          </div>
+          <div className="grid items-start gap-4 sm:gap-6 lg:grid-cols-2 [&>section]:min-w-0">
+            <section id="prayer-times" className="lg:col-span-2">
+              <PrayerTimes hasLocation={!!coords} prayers={prayers} />
+            </section>
+            <section id="mosques" className="lg:col-span-2">
+              <MosqueSection
+                key={coords ? `${coords.lat},${coords.lon}` : "no-location"}
+                coords={coords}
+              />
+            </section>
+            <section id="qibla">
+              <QiblaCompass coords={coords} />
+            </section>
+            <section id="calendar">
+              <IslamicCalendar coords={coords} />
+            </section>
+            <section id="verse" className="lg:col-span-2">
+              <DailyVerse />
+            </section>
+            <section id="quran">
+              <JuzTracker hijriYear={hijriYear} />
+            </section>
+            <section id="tasbih">
+              <TasbihCounter />
+            </section>
+          </div>
         </section>
 
-        {/* ── 5. Qibla Compass ── */}
-        <section id="qibla">
-          <QiblaCompass coords={coords.coords} />
-        </section>
-
-        {/* ── 6. Islamic Calendar ── */}
-        <section id="calendar">
-          <IslamicCalendar coords={coords.coords} />
-        </section>
-
-        {/* ── 7. Quran Verse ── */}
-        <section id="verse">
-          <DailyVerse />
-        </section>
-
-        {/* Juz Tracker & Tasbih (reachable by scroll) */}
-        <section id="quran">
-          <JuzTracker hijriYear={hijriYear} />
-        </section>
-
-        <section id="tasbih">
-          <TasbihCounter />
-        </section>
-      </div>
-
-      {/* ── 9. Features ── */}
-      <LandingFeatures />
-
-      {/* Why Choose (not in primary nav) */}
-      <LandingWhyChoose />
-
-      {/* ── 10. About ── */}
-      <LandingAbout />
-
-      {/* ── 11. Footer ── */}
+        <LandingFeatures />
+        <LandingWhyChoose />
+        <LandingAbout />
+      </main>
       <Footer />
     </div>
   );

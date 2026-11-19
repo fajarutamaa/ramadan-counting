@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import type { Coords } from "./useGeolocation";
 
 interface WeatherData {
@@ -12,96 +12,99 @@ interface WeatherData {
   error: string | null;
 }
 
+const initialWeather: WeatherData = {
+  temperature: 0,
+  weatherCode: 0,
+  windSpeed: 0,
+  humidity: 0,
+  visibility: 0,
+  location: "",
+  loading: true,
+  error: null,
+};
+
 export function useWeather(
   coords: Coords | null,
   weatherBaseUrl: string,
   locationBaseUrl: string,
-  refreshInterval = 60000,
+  manualCityName?: string,
+  refreshInterval = 90000,
 ): WeatherData {
-  const [weather, setWeather] = useState<WeatherData>({
-    temperature: 0,
-    weatherCode: 0,
-    windSpeed: 0,
-    humidity: 0,
-    visibility: 0,
-    location: "",
-    loading: true,
-    error: null,
-  });
-
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const isVisibleRef = useRef(true);
+  const [weather, setWeather] = useState<
+    (WeatherData & { coords: Coords }) | null
+  >(null);
 
   useEffect(() => {
     if (!coords) return;
+    let interval: ReturnType<typeof setInterval> | undefined;
+    let city = manualCityName;
+    let activeRequest: AbortController | undefined;
 
     const fetchWeather = async () => {
+      activeRequest?.abort();
+      const controller = new AbortController();
+      activeRequest = controller;
       try {
         const response = await fetch(
           `${weatherBaseUrl}/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m,visibility&timezone=auto`,
+          { signal: controller.signal },
         );
         const data = await response.json();
         const current = data.current;
+        if (!response.ok || !current) throw new Error("Weather unavailable");
 
-        try {
-          const geoResponse = await fetch(
-            `${locationBaseUrl}/reverse?format=json&lat=${coords.lat}&lon=${coords.lon}`,
-          );
-          const geoData = await geoResponse.json();
-          const city =
-            geoData.address?.city ||
-            geoData.address?.town ||
-            geoData.address?.village ||
-            "Your location";
-
+        if (!city) {
+          try {
+            const geoResponse = await fetch(
+              `${locationBaseUrl}/reverse?format=json&lat=${coords.lat}&lon=${coords.lon}`,
+              { signal: controller.signal },
+            );
+            if (geoResponse.ok) {
+              const { address } = await geoResponse.json();
+              city = address?.city || address?.town || address?.village;
+            }
+          } catch {
+            // Weather can still be shown if reverse geocoding fails.
+          }
+        }
+        if (!controller.signal.aborted) {
           setWeather({
+            coords,
             temperature: Math.round(current.temperature_2m),
             weatherCode: current.weather_code,
             windSpeed: Math.round(current.wind_speed_10m),
             humidity: current.relative_humidity_2m,
             visibility: Math.round(current.visibility / 1000),
-            location: city,
+            location: city ?? "",
             loading: false,
             error: null,
           });
-        } catch {
-          setWeather((prev) => ({
-            ...prev,
-            location: "Unknown location",
-            loading: false,
-          }));
         }
-      } catch (err) {
-        console.error("[useWeather] Failed to fetch weather:", err);
-        setWeather((prev) => ({
-          ...prev,
-          loading: false,
-          error: "Failed to fetch weather",
-        }));
+      } catch {
+        if (!controller.signal.aborted) {
+          setWeather({
+            ...initialWeather,
+            coords,
+            location: city ?? "",
+            loading: false,
+            error: "Failed to fetch weather",
+          });
+        }
       }
     };
 
     const startPolling = () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(fetchWeather, refreshInterval);
-    };
-
-    const stopPolling = () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      clearInterval(interval);
+      interval = setInterval(fetchWeather, refreshInterval);
     };
 
     fetchWeather();
-    startPolling();
+    if (!document.hidden) startPolling();
 
     const onVisibilityChange = () => {
       if (document.hidden) {
-        isVisibleRef.current = false;
-        stopPolling();
+        clearInterval(interval);
       } else {
-        isVisibleRef.current = true;
         fetchWeather();
         startPolling();
       }
@@ -110,10 +113,17 @@ export function useWeather(
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
-      stopPolling();
+      clearInterval(interval);
+      activeRequest?.abort();
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [coords, weatherBaseUrl, locationBaseUrl, refreshInterval]);
+  }, [
+    coords,
+    weatherBaseUrl,
+    locationBaseUrl,
+    manualCityName,
+    refreshInterval,
+  ]);
 
-  return weather;
+  return weather?.coords === coords ? weather : initialWeather;
 }
