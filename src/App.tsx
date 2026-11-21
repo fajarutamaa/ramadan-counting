@@ -19,6 +19,7 @@ import { useWeather } from "@/hooks/useWeather";
 import { useRamadanDate } from "@/hooks/useRamadanDate";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePrayerTimes } from "@/hooks/usePrayerTimes";
+import { useNearbyMosques } from "@/hooks/useNearbyMosques";
 import type { CityLocation } from "@/lib/citySearch";
 
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
   const deviceLocation = useGeolocation(!city, deviceRequest);
   const coords = city ?? deviceLocation.coords;
   const prayers = usePrayerTimes(coords, city?.timeZone);
+  const nearby = useNearbyMosques(coords);
   const weather = useWeather(
     coords,
     weatherBaseUrl,
@@ -62,6 +64,7 @@ export default function App() {
               onUseDeviceLocation: handleUseDeviceLocation,
             }}
             prayers={prayers}
+            nearbyMosques={nearby.results}
             temperature={weather.temperature}
             weatherCode={weather.weatherCode}
             windSpeed={weather.windSpeed}
@@ -94,10 +97,12 @@ export default function App() {
               <MosqueSection
                 key={coords ? `${coords.lat},${coords.lon}` : "no-location"}
                 coords={coords}
+                cityName={city?.name}
+                nearby={nearby}
               />
             </section>
             <section id="qibla">
-              <QiblaCompass coords={coords} />
+              <QiblaCompass coords={coords} cityName={city?.name} />
             </section>
             <section id="calendar">
               <IslamicCalendar coords={coords} />

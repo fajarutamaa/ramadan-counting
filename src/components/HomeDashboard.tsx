@@ -23,7 +23,7 @@ import {
   Eye,
   CloudLightning,
 } from "lucide-react";
-import { fetchNearbyMosques, type Mosque } from "@/lib/mosqueApi";
+import { formatMosqueDistance, type Mosque } from "@/lib/mosqueApi";
 import type { PrayerTime, PrayerTimesData } from "@/hooks/usePrayerTimes";
 import { useIslamicEvents } from "@/hooks/useIslamicEvents";
 import { quranVerses } from "@/lib/quranVerses";
@@ -324,11 +324,11 @@ function QuickInfoGrid({
       />
       <InfoCard
         icon={MapPin}
-        label="Mosques"
+        label="Places to pray"
         value={nearbySummary ? `${nearbySummary.count} nearby` : "—"}
         subtitle={
-          nearbySummary?.closest
-            ? `${nearbySummary.closest.distance} km`
+          nearbySummary?.closest?.distance !== undefined
+            ? formatMosqueDistance(nearbySummary.closest.distance)
             : undefined
         }
         onClick={() => scrollTo("mosques")}
@@ -469,8 +469,8 @@ function SmartRecommendations({
         id: "mosque-nearby",
         icon: MapPin,
         title: `${nextPrayer.name} begins in ${minutesUntilNext} min`,
-        desc: `${nearbyCount} mosque${nearbyCount > 1 ? "s" : ""} available nearby`,
-        action: "Find Mosque",
+        desc: `${nearbyCount} mapped ${nearbyCount === 1 ? "place" : "places"} to pray nearby`,
+        action: "View map",
         href: "mosques",
       });
     }
@@ -480,7 +480,7 @@ function SmartRecommendations({
         id: "jumuah",
         icon: Clock,
         title: "Today is Friday",
-        desc: "Check Jumu'ah prayer times at nearby mosques",
+        desc: "Find a nearby mosque and confirm its Jumu'ah schedule before visiting",
         action: "View Mosques",
         href: "mosques",
       });
@@ -537,6 +537,7 @@ interface HomeDashboardProps {
   locating: boolean;
   locationPicker: LocationPickerProps;
   prayers: PrayerTimesData;
+  nearbyMosques: Mosque[] | null;
   temperature: number;
   weatherCode: number;
   windSpeed: number;
@@ -554,6 +555,7 @@ export function HomeDashboard({
   locating,
   locationPicker,
   prayers,
+  nearbyMosques,
   temperature,
   weatherCode,
   windSpeed,
@@ -572,12 +574,9 @@ export function HomeDashboard({
   const timeZone = locationPicker.city?.timeZone;
   const { currentHijri: hijriInfo, events: islamicEvents } =
     useIslamicEvents(baseUrl);
-  const [nearby, setNearby] = useState<{
-    coords: NonNullable<HomeDashboardProps["coords"]>;
-    count: number;
-    closest: Mosque | null;
-  } | null>(null);
-  const nearbySummary = nearby?.coords === coords ? nearby : null;
+  const nearbySummary = nearbyMosques
+    ? { count: nearbyMosques.length, closest: nearbyMosques[0] ?? null }
+    : null;
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -588,24 +587,6 @@ export function HomeDashboard({
   const hijriDate = hijriInfo
     ? `${hijriInfo.day} ${hijriInfo.monthEn} ${hijriInfo.year} AH`
     : null;
-
-  useEffect(() => {
-    if (!coords) return;
-    let ignore = false;
-    fetchNearbyMosques(coords.lat, coords.lon, 3000)
-      .then((results) => {
-        if (ignore) return;
-        setNearby({
-          coords,
-          count: results.length,
-          closest: results[0] ?? null,
-        });
-      })
-      .catch(() => {});
-    return () => {
-      ignore = true;
-    };
-  }, [coords]);
 
   const hour = Number(
     now.toLocaleTimeString("en-GB", {

@@ -16,8 +16,9 @@
 
 ## Local API configuration
 
-- Create `.env.local` directly; there is no tracked env template or fallback for these base URLs:
+- Create `.env.local` directly; there is no tracked env template:
   - `VITE_API_BASE_URL=https://api.aladhan.com/v1` (Hijri calendar and Ramadan)
   - `VITE_API_WEATHER_URL=https://api.open-meteo.com/v1`
-  - `VITE_API_LOCATION_URL=https://nominatim.openstreetmap.org` (reverse geocoding)
-- Changing those variables does not redirect prayer/fasting timing requests, mosque lookup, or manual city search: those use hardcoded endpoints. City search uses Open-Meteo geocoding (`src/lib/citySearch.ts`), not the Nominatim reverse-geocoding URL.
+  - `VITE_API_LOCATION_URL=https://nominatim.openstreetmap.org` (reverse geocoding and submitted mosque searches; don't add Nominatim autocomplete)
+- Nearby mosque data is fetched once for the dashboard and mosque list. `VITE_API_OVERPASS_URL` optionally overrides the full interpreter URL; the defaults are in `src/lib/mosqueApi.ts`.
+- Prayer/fasting timing and manual city search use separate hardcoded endpoints. City search uses Open-Meteo geocoding, not Nominatim.

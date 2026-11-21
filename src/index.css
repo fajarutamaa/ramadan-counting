@@ -170,17 +170,21 @@ html {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* ── Leaflet overrides ── */
-.selected-marker {
-  filter: hue-rotate(120deg) saturate(1.5) brightness(1.1);
+.mosque-map-pin {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #184639;
+  box-shadow: 0 2px 6px #152d2455;
+  color: #fff;
+  font: 700 12px var(--font-sans);
 }
 
-.leaflet-popup-content-wrapper {
-  border-radius: 0.75rem !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
-}
-
-.leaflet-popup-content {
-  margin: 10px 14px !important;
-  font-family: var(--font-sans) !important;
+.mosque-map-pin-active {
+  background: #e2c790;
+  color: #18372d;
+  outline: 2px solid #184639;
 }
