@@ -1,58 +1,59 @@
-import { MapPin, Navigation, LocateFixed } from "lucide-react";
-import type { Mosque } from "@/lib/mosqueApi";
+import { ChevronRight } from "lucide-react";
+import { formatMosqueDistance, type Mosque } from "@/lib/mosqueApi";
+import { cn } from "@/lib/utils";
 
 interface MosqueCardProps {
   mosque: Mosque;
-  onSelect?: (mosque: Mosque) => void;
+  number: number;
+  selected: boolean;
+  onSelect: (mosque: Mosque) => void;
 }
 
-export function MosqueCard({ mosque, onSelect }: MosqueCardProps) {
-  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${mosque.lat},${mosque.lon}`;
-
+export function MosqueCard({
+  mosque,
+  number,
+  selected,
+  onSelect,
+}: MosqueCardProps) {
   return (
-    <div
-      className="bg-card border border-border rounded-xl p-4 transition-all hover:shadow-sm hover:-translate-y-0.5 cursor-pointer"
-      onClick={() => onSelect?.(mosque)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelect?.(mosque);
-        }
-      }}
+    <button
+      type="button"
+      onClick={() => onSelect(mosque)}
+      aria-pressed={selected}
+      className={cn(
+        "flex w-full cursor-pointer items-start gap-3 rounded-lg border p-3 text-left transition-colors focus-visible:-outline-offset-2",
+        selected
+          ? "border-primary/45 bg-secondary"
+          : "border-transparent hover:bg-secondary/55",
+      )}
     >
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0 mt-0.5">
-          <MapPin className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-semibold text-foreground truncate">
-            {mosque.name}
-          </h4>
-          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+      <span
+        className={cn(
+          "grid size-7 shrink-0 place-items-center rounded-full bg-secondary text-xs font-bold text-primary",
+          selected && "bg-primary text-primary-foreground",
+        )}
+      >
+        {number}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold wrap-break-word">
+          {mosque.name}
+        </span>
+        <span className="mt-0.5 block text-xs text-muted-foreground">
+          {mosque.kind === "mosque" ? "Mosque" : "Muslim prayer space"}
+          {mosque.distance !== undefined &&
+            ` · ${formatMosqueDistance(mosque.distance)}`}
+        </span>
+        {mosque.address && (
+          <span className="mt-1 line-clamp-2 text-xs text-muted-foreground">
             {mosque.address}
-          </p>
-          <div className="flex items-center gap-3 mt-2">
-            {mosque.distance !== undefined && (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                <LocateFixed className="w-3 h-3" />
-                {mosque.distance} km
-              </span>
-            )}
-            <a
-              href={mapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-            >
-              <Navigation className="w-3 h-3" />
-              Directions
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
+          </span>
+        )}
+      </span>
+      <ChevronRight
+        aria-hidden="true"
+        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+      />
+    </button>
   );
 }

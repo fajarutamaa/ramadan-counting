@@ -1,98 +1,143 @@
-import { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import L from "leaflet";
+import { useEffect, useRef, useState } from "react";
+import {
+  CircleMarker,
+  MapContainer,
+  Marker,
+  TileLayer,
+  Tooltip,
+  useMap,
+} from "react-leaflet";
+import { divIcon, latLngBounds, type LatLngTuple } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Mosque } from "@/lib/mosqueApi";
 
 interface MosqueMapProps {
   mosques: Mosque[];
-  center?: [number, number];
-  selectedId?: string;
-  onSelect?: (mosque: Mosque) => void;
-  className?: string;
+  origin: LatLngTuple | null;
+  originLabel: string;
+  selected: Mosque | null;
+  onSelect: (mosque: Mosque) => void;
 }
 
-// Fix default marker icon path issue with bundlers
-const iconUrl = "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png";
-const iconRetinaUrl =
-  "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png";
-const shadowUrl =
-  "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png";
+function markerIcon(index: number, selected: boolean) {
+  return divIcon({
+    className: "",
+    html: `<span class="mosque-map-pin${selected ? " mosque-map-pin-active" : ""}">${index}</span>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+    tooltipAnchor: [0, -14],
+  });
+}
 
-const defaultIcon = L.icon({
-  iconUrl,
-  iconRetinaUrl,
-  shadowUrl,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+function MapViewport({
+  mosques,
+  origin,
+  selected,
+}: Omit<MosqueMapProps, "onSelect" | "originLabel">) {
+  const map = useMap();
+  useEffect(() => {
+    const points: LatLngTuple[] = mosques.map(({ lat, lon }) => [lat, lon]);
+    if (origin) points.push(origin);
+    if (!points.length) return;
+    map.invalidateSize({ pan: false });
+    map.fitBounds(latLngBounds(points), {
+      padding: [28, 28],
+      maxZoom: 15,
+      animate: false,
+    });
+  }, [map, mosques, origin]);
 
-const selectedIcon = L.icon({
-  iconUrl,
-  iconRetinaUrl,
-  shadowUrl,
-  iconSize: [30, 49],
-  iconAnchor: [15, 49],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-  className: "selected-marker",
-});
+  useEffect(() => {
+    if (selected)
+      map.panInside([selected.lat, selected.lon], {
+        padding: [40, 40],
+        animate: false,
+      });
+  }, [map, selected]);
+
+  return null;
+}
 
 export function MosqueMap({
   mosques,
-  center,
-  selectedId,
+  origin,
+  originLabel,
+  selected,
   onSelect,
-  className,
 }: MosqueMapProps) {
-  const mapRef = useRef<L.Map>(null);
-
-  const defaultCenter: [number, number] = center ?? [51.505, -0.09];
-
-  useEffect(() => {
-    if (mapRef.current && center) {
-      mapRef.current.setView(center, mapRef.current.getZoom());
-    }
-  }, [center]);
+  const tileError = useRef(false);
+  const [incompleteTiles, setIncompleteTiles] = useState(false);
+  const first = mosques[0];
+  const center: LatLngTuple | undefined =
+    origin ?? (first && [first.lat, first.lon]);
+  if (!center) return null;
 
   return (
-    <div className={className}>
+    <div
+      role="region"
+      aria-label="Map of mosque results"
+      className="isolate overflow-hidden rounded-xl border bg-secondary"
+    >
       <MapContainer
-        center={defaultCenter}
-        zoom={13}
-        className="w-full h-full rounded-xl z-0"
-        ref={mapRef}
-        scrollWheelZoom={true}
+        center={center}
+        zoom={14}
+        scrollWheelZoom={false}
+        className="z-0 h-64 w-full sm:h-84"
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          eventHandlers={{
+            loading: () => {
+              tileError.current = false;
+            },
+            tileerror: () => {
+              tileError.current = true;
+            },
+            load: () => setIncompleteTiles(tileError.current),
+          }}
         />
-        {mosques.map((mosque) => (
-          <Marker
-            key={mosque.id}
-            position={[mosque.lat, mosque.lon]}
-            icon={mosque.id === selectedId ? selectedIcon : defaultIcon}
-            eventHandlers={{
-              click: () => onSelect?.(mosque),
+        <MapViewport mosques={mosques} origin={origin} selected={selected} />
+        {origin && (
+          <CircleMarker
+            center={origin}
+            radius={7}
+            pathOptions={{
+              color: "#fff",
+              fillColor: "#1d4ed8",
+              fillOpacity: 1,
+              weight: 2,
             }}
           >
-            <Popup>
-              <div className="text-sm">
-                <p className="font-semibold">{mosque.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{mosque.address}</p>
-                {mosque.distance !== undefined && (
-                  <p className="text-xs text-emerald-600 mt-0.5">
-                    {mosque.distance} km
-                  </p>
-                )}
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+            <Tooltip direction="top">{originLabel}</Tooltip>
+          </CircleMarker>
+        )}
+        {mosques.map((mosque, index) => {
+          const active = mosque.id === selected?.id;
+          return (
+            <Marker
+              key={mosque.id}
+              position={[mosque.lat, mosque.lon]}
+              icon={markerIcon(index + 1, active)}
+              title={mosque.name}
+              alt={mosque.name}
+              zIndexOffset={active ? 1000 : 0}
+              eventHandlers={{ click: () => onSelect(mosque) }}
+            >
+              <Tooltip direction="top">{mosque.name}</Tooltip>
+            </Marker>
+          );
+        })}
       </MapContainer>
+      {incompleteTiles && (
+        <p
+          role="status"
+          className="border-t bg-card px-3 py-2 text-xs text-muted-foreground"
+        >
+          Some map tiles didn’t load. You can still select a place and open
+          directions.
+        </p>
+      )}
     </div>
   );
 }

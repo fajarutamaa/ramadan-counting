@@ -1,141 +1,215 @@
-import { useCallback } from "react";
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { CalendarDays, Clock, Compass, MapPin } from "lucide-react";
+import { PrayerSettingsDialog } from "@/components/PrayerSettingsDialog";
+import { PrayerCalendarDialog } from "@/components/PrayerCalendarDialog";
 import type { PrayerTimesData } from "@/hooks/usePrayerTimes";
-import { fadeInUp } from "@/lib/animations";
-import { Clock, MapPin, Compass, CalendarDays } from "lucide-react";
+import {
+  formatPrayerDate,
+  getPrayerMethodName,
+  type PrayerSettings,
+} from "@/lib/prayerSchedule";
+import { cn } from "@/lib/utils";
 
 interface PrayerTimesProps {
-  hasLocation: boolean;
   prayers: PrayerTimesData;
+  settings: PrayerSettings;
+  onSaveSettings: (settings: PrayerSettings) => void;
 }
 
-export function PrayerTimes({ hasLocation, prayers }: PrayerTimesProps) {
-  const { times, loading, error, nextPrayer, minutesUntilNext } = prayers;
-
-  const scrollTo = useCallback((id: string) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ block: "start" });
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="rounded-2xl border bg-card p-5 sm:p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Clock className="size-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">
-            Prayer Times
-          </h3>
-        </div>
-        <div className="grid grid-cols-5 gap-2">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 rounded-lg bg-muted animate-shimmer" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !times.length) {
-    return (
-      <div className="rounded-2xl border bg-card p-5 sm:p-6">
-        <h3 className="flex items-center gap-2 text-sm font-semibold">
-          <Clock aria-hidden="true" className="size-4 text-primary" />
-          Prayer times
-        </h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {hasLocation
-            ? "The prayer schedule is temporarily unavailable."
-            : "Choose a city or allow device location to see your prayer schedule."}
-        </p>
-        {!hasLocation && (
-          <a
-            href="#location-control"
-            className="mt-2 inline-block text-sm font-semibold text-primary hover:underline"
-          >
-            Find your location
-          </a>
-        )}
-      </div>
-    );
-  }
+export function PrayerTimes({
+  prayers,
+  settings,
+  onSaveSettings,
+}: PrayerTimesProps) {
+  const [view, setView] = useState<"today" | "tomorrow">("today");
+  const {
+    location,
+    timeZone,
+    online,
+    canRefresh,
+    usingLastDevice,
+    nextPrayer,
+    minutesUntilNext,
+  } = prayers;
+  const day = prayers[view];
+  const adjusted = Object.values(settings.offsets).some(
+    (minutes) => minutes !== 0,
+  );
 
   return (
-    <motion.div
-      className="overflow-hidden rounded-2xl border bg-card"
-      variants={fadeInUp}
-      initial="hidden"
-      animate="visible"
-    >
-      <div className="p-5 sm:p-6">
-        <div className="flex items-center gap-2 mb-5">
-          <Clock className="size-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">
-            Today's Prayer Times
-          </h3>
+    <div className="rounded-2xl border bg-card">
+      <div className="p-4 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+              <Clock aria-hidden="true" className="size-4 text-primary" />
+              Prayer times
+            </h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {getPrayerMethodName(settings.method)}
+              {adjusted && " · manual adjustments"}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <PrayerCalendarDialog
+              key={JSON.stringify([
+                prayers.today.date,
+                prayers.activePlace,
+                prayers.timeZone,
+                settings,
+              ])}
+              prayers={prayers}
+              settings={settings}
+            />
+            <PrayerSettingsDialog settings={settings} onSave={onSaveSettings} />
+          </div>
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-          {times.map((prayer) => (
-            <div
-              key={prayer.name}
-              className={`relative rounded-lg p-2.5 sm:p-3 text-center transition-colors ${
-                prayer.isCurrent
-                  ? "bg-primary text-primary-foreground"
-                  : prayer.isNext
-                    ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-700"
-                    : "bg-secondary text-secondary-foreground"
-              }`}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+          <div
+            role="group"
+            aria-label="Schedule day"
+            className="flex gap-1 rounded-lg bg-secondary p-1"
+          >
+            {(["today", "tomorrow"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={option === view}
+                onClick={() => setView(option)}
+                className={cn(
+                  "min-h-9 cursor-pointer rounded-md px-3 text-sm font-semibold capitalize",
+                  view === option
+                    ? "bg-card text-primary shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          <div className="min-w-0 text-xs text-muted-foreground sm:text-right">
+            <time dateTime={day.date} className="font-semibold text-foreground">
+              {formatPrayerDate(day.date)}
+            </time>
+            {location && (
+              <p className="mt-0.5 wrap-break-word">
+                {usingLastDevice && "Last saved location: "}
+                {location} · {timeZone}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {day.times.length > 0 ? (
+          <>
+            <ul
+              aria-label={`${view} prayer timetable`}
+              className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5"
             >
-              <div className="text-[10px] sm:text-[11px] font-medium mb-0.5 sm:mb-1 opacity-80">
-                {prayer.name}
-              </div>
-              <div className="text-sm sm:text-base font-bold tabular-nums leading-none">
-                {prayer.time}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex items-center justify-center gap-4 mt-4 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
-            Current
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-200 dark:bg-emerald-700 ring-1 ring-emerald-400" />
-            Next
-          </span>
-        </div>
+              {day.times.map((prayer) => (
+                <li
+                  key={prayer.name}
+                  className={cn(
+                    "rounded-lg p-2.5 text-center sm:p-3",
+                    prayer.isCurrent
+                      ? "bg-primary text-primary-foreground"
+                      : prayer.isNext
+                        ? "bg-secondary text-primary ring-1 ring-primary/35"
+                        : "bg-secondary/60 text-secondary-foreground",
+                  )}
+                >
+                  <div className="mb-1 text-xs font-medium">{prayer.name}</div>
+                  <div className="text-base leading-none font-bold tabular-nums">
+                    {prayer.time}
+                  </div>
+                  {prayer.dayOffset !== 0 && (
+                    <span className="mt-1 block text-[11px]">
+                      {prayer.dayOffset < 0 ? "Previous day" : "Next day"}
+                    </span>
+                  )}
+                  {prayer.isCurrent && (
+                    <span className="mt-1 block text-[11px]">Current</span>
+                  )}
+                  {prayer.isNext && (
+                    <span className="mt-1 block text-[11px]">Next</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {day.fromCache && (
+              <p role="status" className="mt-3 text-xs text-muted-foreground">
+                {online
+                  ? "Showing the saved schedule."
+                  : "Offline · showing the saved schedule."}
+              </p>
+            )}
+          </>
+        ) : (
+          <div className="mt-4 rounded-lg border border-dashed p-4">
+            <p role="status" className="text-sm text-muted-foreground">
+              {day.loading
+                ? "Loading prayer times…"
+                : !online
+                  ? "No saved schedule for this location, date, and method. Open it online first."
+                  : !location
+                    ? "Choose a city or allow device location to see your prayer schedule."
+                    : usingLastDevice
+                      ? "No schedule saved for this date and method. Set your location to load it."
+                      : "The prayer service didn’t respond for this date."}
+            </p>
+            {!day.loading && canRefresh && (
+              <button
+                type="button"
+                onClick={prayers.retry}
+                className="mt-2 min-h-9 cursor-pointer text-sm font-semibold text-primary hover:underline"
+              >
+                Try again
+              </button>
+            )}
+            {!day.loading && !canRefresh && online && (
+              <a
+                href="#location-control"
+                className="mt-2 inline-block text-sm font-semibold text-primary hover:underline"
+              >
+                Set location
+              </a>
+            )}
+          </div>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          Schedules that load successfully are kept on this device for offline
+          use.
+        </p>
       </div>
 
-      {/* Contextual connections */}
-      {nextPrayer && (
-        <div className="border-t border-border px-6 py-3 flex items-center gap-3 flex-wrap">
+      {view === "today" && nextPrayer && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 sm:px-6">
           {minutesUntilNext !== null && minutesUntilNext < 60 && (
-            <button
-              onClick={() => scrollTo("mosques")}
-              className="inline-flex min-h-8 items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+            <a
+              href="#mosques"
+              className="inline-flex min-h-9 items-center gap-1.5 text-xs font-medium text-primary hover:underline"
             >
-              <MapPin className="w-3 h-3" />
-              {nextPrayer.name} in {minutesUntilNext} min — Nearby mosques
-            </button>
+              <MapPin aria-hidden="true" className="size-3.5" />
+              {nextPrayer.name} in {minutesUntilNext} min · Nearby mosques
+            </a>
           )}
-          <button
-            onClick={() => scrollTo("qibla")}
-            className="inline-flex min-h-8 items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+          <a
+            href="#qibla"
+            className="inline-flex min-h-9 items-center gap-1.5 text-xs font-medium text-primary hover:underline"
           >
-            <Compass className="w-3 h-3" />
-            Need to pray? Open Qibla
-          </button>
-          <button
-            onClick={() => scrollTo("calendar")}
-            className="inline-flex min-h-8 items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+            <Compass aria-hidden="true" className="size-3.5" />
+            Qibla direction
+          </a>
+          <a
+            href="#calendar"
+            className="inline-flex min-h-9 items-center gap-1.5 text-xs font-medium text-primary hover:underline"
           >
-            <CalendarDays className="w-3 h-3" />
-            Islamic Calendar
-          </button>
+            <CalendarDays aria-hidden="true" className="size-3.5" />
+            Islamic calendar
+          </a>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }

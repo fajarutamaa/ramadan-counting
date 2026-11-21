@@ -24,24 +24,24 @@ A privacy-first, open-source Islamic companion that does one thing well — help
 
 ## Features
 
-| Feature                   | Description                                                                                                     |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| **Prayer Times**          | Accurate daily prayer schedule via AlAdhan API (ISNA method), with current/next prayer indicators and countdown |
-| **Nearby Mosques**        | Discover mosques within 5 km using OpenStreetMap Overpass API, sorted by distance                               |
-| **Mosque Search**         | Search mosques globally by name, city, or address via Nominatim                                                 |
-| **Mosque Map**            | Interactive Leaflet map with directions to selected mosque                                                      |
-| **Qibla Compass**         | Accurate Qibla bearing calculated from great-circle formula, with live device compass overlay                   |
-| **Islamic Calendar**      | API-driven Hijri date display with correct Islamic event dates (not hardcoded Gregorian)                        |
-| **Ramadan Countdown**     | Dynamic countdown to the next Ramadan, computed from the current Hijri date                                     |
-| **Fasting Tracker**       | Daily fast logging (fasted/not-fasted/excused) with streak tracking, tied to Ramadan dates                      |
-| **Fasting Window**        | Live countdown to Iftar and Suhoor end, fasting progress, and duration                                          |
-| **Juz Tracker**           | Track Quran completion by Juz across Hijri years, with per-year progress and suggestion                         |
-| **Tasbih Counter**        | Digital dhikr counter with preset adhkar, daily goal tracking, and tap/space-to-count                           |
-| **Daily Verse**           | Curated Quran verses with navigation, revelation type, and surah reference                                      |
-| **Weather**               | Local weather (temperature, conditions, wind, humidity, visibility) via Open-Meteo                              |
-| **Smart Recommendations** | Contextual suggestions — nearby mosques when prayer approaches, Jumu'ah alerts on Fridays                       |
-| **Theme Support**         | Light, dark, and system theme with persistent preference                                                        |
-| **Location Detection**    | Browser geolocation with session caching; graceful fallback when unavailable                                    |
+| Feature                   | Description                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| **Prayer Times**          | Today and tomorrow, with selectable calculation methods, per-prayer minute adjustments, and offline viewing |
+| **Nearby Mosques**        | Discover mosques within 5 km using OpenStreetMap Overpass API, sorted by distance                           |
+| **Mosque Search**         | Search mosques globally by name, city, or address via Nominatim                                             |
+| **Mosque Map**            | Interactive map with Google Maps directions and a locally saved places list                                 |
+| **Qibla Compass**         | Accurate Qibla bearing calculated from great-circle formula, with live device compass overlay               |
+| **Islamic Calendar**      | API-driven Hijri date display with correct Islamic event dates (not hardcoded Gregorian)                    |
+| **Ramadan Countdown**     | Dynamic countdown to the next Ramadan, computed from the current Hijri date                                 |
+| **Fasting Tracker**       | Daily fast logging (fasted/not-fasted/excused) with streak tracking, tied to Ramadan dates                  |
+| **Ramadan Mode**          | Seasonal dashboard countdowns to Fajr and Maghrib using the configured prayer schedule                      |
+| **Juz Tracker**           | Track Quran completion by Juz across Hijri years, with per-year progress and suggestion                     |
+| **Tasbih Counter**        | Digital dhikr counter with preset adhkar, daily goal tracking, and tap/space-to-count                       |
+| **Daily Verse**           | Curated Quran verses with navigation, revelation type, and surah reference                                  |
+| **Weather**               | Local weather (temperature, conditions, wind, humidity, visibility) via Open-Meteo                          |
+| **Smart Recommendations** | Contextual suggestions — nearby mosques when prayer approaches, Jumu'ah alerts on Fridays                   |
+| **Theme Support**         | Light, dark, and system theme with persistent preference                                                    |
+| **Location Detection**    | Browser geolocation with session caching; graceful fallback when unavailable                                |
 
 ## Tech Stack
 
@@ -160,7 +160,21 @@ These defaults point to free, publicly available APIs that require no API key.
 
 ### Prayer Calculation
 
-Prayer times use the **ISNA** calculation method (`method=2` in the AlAdhan API), which is commonly used in North America. The app passes the user's latitude and longitude to the API for accurate local times.
+In **Prayer times → Settings**, choose a calculation method (including Kemenag for Indonesia) and optionally adjust each prayer by up to 60 minutes in either direction. The previous ISNA method remains the default. Nur uses the selected city's time zone or the device time zone in GPS mode.
+
+### Offline Prayer Times
+
+Open the production site over HTTPS at least once while online and let today's and tomorrow's schedules load. These days can then be opened again offline for the same location and calculation method. A saved timetable is labeled with its actual date; an older day is not shown as today's schedule. Weather, map tiles, and new location searches still need a connection.
+
+### Calendar Reminders and Installation
+
+- In **Prayer times → Export calendar**, choose the prayers, reminder lead time, and either the next seven days (online) or the loaded days. Download the `.ics` file and import it into your calendar. Imported events are snapshots; check your calendar app's notifications after importing.
+- Use **Install Nur** in the header or your browser's installation menu. In Safari on iPhone or iPad, use **Share → Add to Home Screen**. Open the installed app online once to save a timetable for offline use.
+
+### Saved Mosques and Ramadan
+
+- Open a mosque result and tap the heart. **Mosques → Saved** keeps the pin and directions link on this device. Older name-only saves can be restored by opening the original place from search results.
+- During Ramadan, the main prayer card shows the next sahur or iftar and links to the fasting log. The countdown uses the same location, method, and adjustments as Prayer times. The calendar may differ from the date announced after local moon sightings.
 
 ### Location Services
 
@@ -171,7 +185,7 @@ Prayer times use the **ISNA** calculation method (`method=2` in the AlAdhan API)
 
 - The Hijri date is fetched live from AlAdhan's Gregorian-to-Hijri conversion endpoint.
 - Islamic event dates (Ramadan, Eid, etc.) are **not hardcoded** — they are computed from their fixed Hijri month/day via the Hijri-to-Gregorian API, ensuring accuracy across years.
-- Results are cached in `sessionStorage` per Hijri year to minimize API calls.
+- Upcoming event dates are cached in `sessionStorage`. Recent Hijri day lookups are saved in `localStorage` so a previously loaded Ramadan day can open offline.
 
 ### Data Persistence
 
@@ -186,7 +200,7 @@ Prayer times use the **ISNA** calculation method (`method=2` in the AlAdhan API)
 
 ### AlAdhan API (`api.aladhan.com`)
 
-- **Prayer times:** Fetched daily by lat/lon with ISNA calculation method
+- **Prayer times:** Today and tomorrow by coordinates, time zone, and selected calculation method
 - **Hijri date conversion:** Gregorian-to-Hijri (`gToH`) and Hijri-to-Gregorian (`hToG`)
 - **Usage:** Prayer times, Ramadan date calculation, Islamic event date computation
 
@@ -212,7 +226,7 @@ Prayer times use the **ISNA** calculation method (`method=2` in the AlAdhan API)
 
 The application does not use a global state library. Each feature manages its own state through custom React hooks:
 
-- **Server state** (prayer times, weather, Hijri dates) is fetched on mount and cached in `sessionStorage`
+- **API data** is loaded when available. Prayer schedules and recent Hijri days are saved in `localStorage`; upcoming events use `sessionStorage`.
 - **User data** (fasting records, Juz progress, Tasbih counts) persists in `localStorage`
 - **UI state** (selected mosque, view mode, active dhikr) is local component state
 
@@ -221,7 +235,7 @@ The application does not use a global state library. Each feature manages its ow
 - API calls are triggered by location availability, not route changes (single page, no router)
 - `fetch` is used directly (no React Query/SWR abstraction)
 - Weather uses polling with tab-visibility awareness (stops when hidden, resumes on focus)
-- Prayer times and Hijri data are fetched once per day (cached by date string)
+- The prayer timetable loads for both days on startup, date or location changes, and reconnect; minute adjustments are applied to the saved API times.
 - Islamic events are cached per Hijri year to avoid redundant API calls
 
 ### Component Architecture
@@ -241,7 +255,6 @@ There is no routing library. The application is a single-page vertical scroll wi
 - **Session caching:** API responses for coordinates, Ramadan date, Hijri date, and Islamic events are cached in `sessionStorage`, avoiding redundant network calls within a session.
 - **Local persistence:** User-generated data (fasts, Juz, Tasbih) is stored in `localStorage` — no database calls.
 - **Polling optimization:** Weather polls every 60–90 seconds but stops when the browser tab is hidden, resuming on visibility change.
-- **Once-daily fetches:** Prayer times are fetched only once per day (guarded by a `useRef` + date string comparison).
 - **Animation optimization:** Framer Motion variants are defined as constants (`@/lib/animations`) to avoid re-creation on every render.
 
 ---
@@ -262,14 +275,11 @@ There is no routing library. The application is a single-page vertical scroll wi
 ### In progress
 
 - **Fasting Tracker enhancements:** Multi-year fasting history, export
-- **Mosque favorites:** Persistent saved mosque list with quick access
 
 ### Planned
 
-- **Prayer notifications:** Browser notifications for prayer times
-- **Offline support:** Service worker caching for prayer times and Hijri data
-- **PWA support:** Installable as a standalone app with manifest
-- **Multiple calculation methods:** Configurable Islamic prayer calculation methods
+- **Prayer notifications:** Native web reminders (calendar export is already available)
+- **Expanded offline support:** Cache Hijri calendar data for offline use
 - **Widget system:** Customizable dashboard widgets
 - **Localization:** Multi-language support (Arabic, Indonesian, Urdu, etc.)
 

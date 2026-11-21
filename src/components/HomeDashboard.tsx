@@ -23,13 +23,15 @@ import {
   Eye,
   CloudLightning,
 } from "lucide-react";
-import { fetchNearbyMosques, type Mosque } from "@/lib/mosqueApi";
+import { formatMosqueDistance, type Mosque } from "@/lib/mosqueApi";
 import type { PrayerTime, PrayerTimesData } from "@/hooks/usePrayerTimes";
-import { useIslamicEvents } from "@/hooks/useIslamicEvents";
+import type { IslamicEvent } from "@/hooks/useIslamicEvents";
+import type { HijriDateInfo } from "@/hooks/useHijriDates";
 import { quranVerses } from "@/lib/quranVerses";
 import { calcQibla } from "@/lib/qibla";
 import { QuickAccess } from "@/components/QuickAccess";
 import { cn } from "@/lib/utils";
+import { RamadanSummary, type RamadanInfo } from "@/components/RamadanSummary";
 import {
   LocationPicker,
   type LocationPickerProps,
@@ -145,13 +147,17 @@ function HeroSection({
 }
 
 interface PrayerCardProps {
-  currentPrayer: PrayerTime | undefined;
+  currentPrayer: Pick<PrayerTime, "name" | "time"> | undefined;
   nextPrayer: PrayerTimesData["nextPrayer"];
   nextPrayerCountdown: string;
   hasLocation: boolean;
   locating: boolean;
   locationPicker: LocationPickerProps;
   prayerLoading: boolean;
+  offline: boolean;
+  savedLocation: string | null;
+  prayers: PrayerTimesData;
+  ramadan: RamadanInfo | null;
   temperature: number;
   weatherCode: number;
   windSpeed: number;
@@ -169,6 +175,10 @@ function PrayerCard({
   locating,
   locationPicker,
   prayerLoading,
+  offline,
+  savedLocation,
+  prayers,
+  ramadan,
   temperature,
   weatherCode,
   windSpeed,
@@ -201,11 +211,17 @@ function PrayerCard({
         id="prayer-summary"
         className="section-label flex items-center gap-2 text-[#e2c790]"
       >
-        <Clock aria-hidden="true" className="size-4" />
-        Prayer today
+        {ramadan ? (
+          <Moon aria-hidden="true" className="size-4" />
+        ) : (
+          <Clock aria-hidden="true" className="size-4" />
+        )}
+        {ramadan ? `Ramadan · Day ${ramadan.day}` : "Prayer today"}
       </h2>
       <div className="my-5 flex flex-1 flex-wrap items-start justify-between gap-4">
-        {currentPrayer || nextPrayer ? (
+        {ramadan ? (
+          <RamadanSummary prayers={prayers} ramadan={ramadan} />
+        ) : currentPrayer || nextPrayer ? (
           <>
             {currentPrayer && (
               <div>
@@ -241,17 +257,24 @@ function PrayerCard({
               role="status"
               className="mt-2 max-w-xs text-sm leading-relaxed text-white/80"
             >
-              {locating
-                ? "Finding your device location… You can also choose a city."
-                : !hasLocation
-                  ? "Choose a city or allow device location to see your local schedule."
-                  : prayerLoading
-                    ? "Loading your local prayer schedule…"
-                    : "Your local schedule is temporarily unavailable."}
+              {offline
+                ? "No saved prayer schedule for today. Open the schedule online first."
+                : locating
+                  ? "Finding your device location… You can also choose a city."
+                  : !hasLocation
+                    ? "Choose a city or allow device location to see your local schedule."
+                    : prayerLoading
+                      ? "Loading your local prayer schedule…"
+                      : "Your local schedule is temporarily unavailable."}
             </p>
           </div>
         )}
       </div>
+      {!ramadan && savedLocation && (
+        <p className="mb-3 text-xs text-white/80">
+          Saved schedule · {savedLocation}
+        </p>
+      )}
 
       <div className="border-t border-white/20 pt-3">
         {hasLocation && !weatherLoading && !weatherError && (
@@ -278,8 +301,17 @@ function PrayerCard({
         )}
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {ramadan && (
+            <a
+              href="#fasting-log"
+              className="inline-flex min-h-9 items-center gap-2 rounded-sm text-sm font-semibold hover:underline"
+            >
+              Open fasting log{" "}
+              <ArrowRight aria-hidden="true" className="size-4" />
+            </a>
+          )}
           <LocationPicker {...locationPicker} hasLocation={hasLocation} />
-          {hasLocation && (
+          {(hasLocation || savedLocation) && (
             <a
               href="#prayer-times"
               className="inline-flex min-h-9 items-center gap-2 rounded-sm text-sm font-semibold hover:underline"
@@ -324,11 +356,11 @@ function QuickInfoGrid({
       />
       <InfoCard
         icon={MapPin}
-        label="Mosques"
+        label="Places to pray"
         value={nearbySummary ? `${nearbySummary.count} nearby` : "—"}
         subtitle={
-          nearbySummary?.closest
-            ? `${nearbySummary.closest.distance} km`
+          nearbySummary?.closest?.distance !== undefined
+            ? formatMosqueDistance(nearbySummary.closest.distance)
             : undefined
         }
         onClick={() => scrollTo("mosques")}
@@ -469,8 +501,8 @@ function SmartRecommendations({
         id: "mosque-nearby",
         icon: MapPin,
         title: `${nextPrayer.name} begins in ${minutesUntilNext} min`,
-        desc: `${nearbyCount} mosque${nearbyCount > 1 ? "s" : ""} available nearby`,
-        action: "Find Mosque",
+        desc: `${nearbyCount} mapped ${nearbyCount === 1 ? "place" : "places"} to pray nearby`,
+        action: "View map",
         href: "mosques",
       });
     }
@@ -480,7 +512,7 @@ function SmartRecommendations({
         id: "jumuah",
         icon: Clock,
         title: "Today is Friday",
-        desc: "Check Jumu'ah prayer times at nearby mosques",
+        desc: "Find a nearby mosque and confirm its Jumu'ah schedule before visiting",
         action: "View Mosques",
         href: "mosques",
       });
@@ -537,6 +569,10 @@ interface HomeDashboardProps {
   locating: boolean;
   locationPicker: LocationPickerProps;
   prayers: PrayerTimesData;
+  hijriInfo: HijriDateInfo | null;
+  islamicEvents: IslamicEvent[];
+  ramadan: RamadanInfo | null;
+  nearbyMosques: Mosque[] | null;
   temperature: number;
   weatherCode: number;
   windSpeed: number;
@@ -554,6 +590,10 @@ export function HomeDashboard({
   locating,
   locationPicker,
   prayers,
+  hijriInfo,
+  islamicEvents,
+  ramadan,
+  nearbyMosques,
   temperature,
   weatherCode,
   windSpeed,
@@ -562,22 +602,11 @@ export function HomeDashboard({
   weatherLoading,
   weatherError,
 }: HomeDashboardProps) {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL;
-  const {
-    times,
-    loading: prayerLoading,
-    nextPrayer,
-    minutesUntilNext,
-  } = prayers;
+  const { today, currentPrayer, nextPrayer, minutesUntilNext } = prayers;
   const timeZone = locationPicker.city?.timeZone;
-  const { currentHijri: hijriInfo, events: islamicEvents } =
-    useIslamicEvents(baseUrl);
-  const [nearby, setNearby] = useState<{
-    coords: NonNullable<HomeDashboardProps["coords"]>;
-    count: number;
-    closest: Mosque | null;
-  } | null>(null);
-  const nearbySummary = nearby?.coords === coords ? nearby : null;
+  const nearbySummary = nearbyMosques
+    ? { count: nearbyMosques.length, closest: nearbyMosques[0] ?? null }
+    : null;
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -589,24 +618,6 @@ export function HomeDashboard({
     ? `${hijriInfo.day} ${hijriInfo.monthEn} ${hijriInfo.year} AH`
     : null;
 
-  useEffect(() => {
-    if (!coords) return;
-    let ignore = false;
-    fetchNearbyMosques(coords.lat, coords.lon, 3000)
-      .then((results) => {
-        if (ignore) return;
-        setNearby({
-          coords,
-          count: results.length,
-          closest: results[0] ?? null,
-        });
-      })
-      .catch(() => {});
-    return () => {
-      ignore = true;
-    };
-  }, [coords]);
-
   const hour = Number(
     now.toLocaleTimeString("en-GB", {
       timeZone,
@@ -617,7 +628,6 @@ export function HomeDashboard({
   const { text: greetingText, Icon: GreetingIcon } = getGreeting(hour);
   const isFriday =
     now.toLocaleDateString("en-US", { timeZone, weekday: "short" }) === "Fri";
-  const currentPrayer = times.find((p) => p.isCurrent);
 
   const qibla = useMemo(
     () => (coords ? calcQibla(coords.lat, coords.lon) : null),
@@ -680,7 +690,11 @@ export function HomeDashboard({
           hasLocation={!!coords}
           locating={locating}
           locationPicker={locationPicker}
-          prayerLoading={prayerLoading}
+          prayerLoading={today.loading}
+          offline={!prayers.online}
+          savedLocation={today.fromCache ? prayers.location : null}
+          prayers={prayers}
+          ramadan={ramadan}
           temperature={temperature}
           weatherCode={weatherCode}
           windSpeed={windSpeed}
