@@ -143,6 +143,10 @@ export function formatMosqueDistance(km: number) {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
 }
 
+export function mosqueDirections({ lat, lon }: Pick<Mosque, "lat" | "lon">) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+}
+
 const nearbyCache = new Map<string, { until: number; results: Mosque[] }>();
 
 async function loadOverpass(

@@ -1,13 +1,6 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ISLAMIC_EVENTS } from "@/lib/islamicEvents";
-
-export interface HijriDateInfo {
-  day: number;
-  month: number;
-  monthAr: string;
-  monthEn: string;
-  year: number;
-}
+import type { HijriDateInfo } from "@/hooks/useHijriDates";
 
 export interface IslamicEvent {
   id: string;
@@ -17,144 +10,115 @@ export interface IslamicEvent {
   emoji: string;
 }
 
-interface UseIslamicEventsResult {
-  currentHijri: HijriDateInfo | null;
-  events: IslamicEvent[];
-  loading: boolean;
-  error: string | null;
+function readEvents(key: string): IslamicEvent[] | null {
+  try {
+    const data: IslamicEvent[] | null = JSON.parse(
+      sessionStorage.getItem(key) ?? "null",
+    );
+    return Array.isArray(data)
+      ? data
+          .map((event) => ({ ...event, date: new Date(event.date) }))
+          .filter((event) => Number.isFinite(event.date.getTime()))
+      : null;
+  } catch {
+    return null;
+  }
 }
 
-const EVENTS_CACHE_PREFIX = "islamicEvents_";
-const HIJRI_CACHE_KEY = "hijriCurrent";
-
-export function useIslamicEvents(baseUrl: string): UseIslamicEventsResult {
-  const [currentHijri, setCurrentHijri] = useState<HijriDateInfo | null>(null);
-  const [events, setEvents] = useState<IslamicEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function useIslamicEvents(
+  baseUrl: string,
+  hijri: HijriDateInfo | null,
+  online: boolean,
+) {
+  const [response, setResponse] = useState<{
+    key: string;
+    events: IslamicEvent[];
+  }>();
+  const plan = useMemo(
+    () =>
+      hijri
+        ? ISLAMIC_EVENTS.map((event) => ({
+            event,
+            year:
+              event.hijriMonth < hijri.month ||
+              (event.hijriMonth === hijri.month && event.hijriDay < hijri.day)
+                ? hijri.year + 1
+                : hijri.year,
+          }))
+        : null,
+    [hijri],
+  );
+  const key = plan
+    ? `nur.islamicEvents.v2:${plan.map(({ year }) => year).join("-")}`
+    : "";
 
   useEffect(() => {
-    let cancelled = false;
+    if (!plan) return;
+    const cached = readEvents(key);
+    if (cached) {
+      setResponse({ key, events: cached });
+      return;
+    }
+    if (!online) return;
 
-    async function fetchData() {
-      try {
-        setLoading(true);
-        const now = new Date();
-        const todayStr = now.toDateString();
-
-        const cachedPack = sessionStorage.getItem(HIJRI_CACHE_KEY);
-        if (cachedPack) {
-          const parsed = JSON.parse(cachedPack);
-          if (parsed.dateStr === todayStr) {
-            const hijri = parsed.hijri as HijriDateInfo;
-            const eventsCacheKey = EVENTS_CACHE_PREFIX + hijri.year;
-            const cachedEvents = sessionStorage.getItem(eventsCacheKey);
-            if (cachedEvents) {
-              const restored: IslamicEvent[] = JSON.parse(cachedEvents).map(
-                (e: IslamicEvent) => ({ ...e, date: new Date(e.date) }),
-              );
-              if (!cancelled) {
-                setCurrentHijri(hijri);
-                setEvents(restored);
-                setError(null);
-                setLoading(false);
-              }
-              return;
-            }
-          }
-        }
-
-        const dd = String(now.getDate()).padStart(2, "0");
-        const mm = String(now.getMonth() + 1).padStart(2, "0");
-        const yyyy = now.getFullYear();
-
-        const todayRes = await fetch(`${baseUrl}/gToH/${dd}-${mm}-${yyyy}`);
-        const todayData = await todayRes.json();
-
-        if (todayData.code !== 200 || !todayData.data?.hijri) {
-          throw new Error("Failed to get current Hijri date");
-        }
-
-        const hijri = todayData.data.hijri;
-        const hijriInfo: HijriDateInfo = {
-          day: parseInt(hijri.day),
-          month: hijri.month.number,
-          monthAr: hijri.month.ar,
-          monthEn: hijri.month.en,
-          year: parseInt(hijri.year),
-        };
-
-        sessionStorage.setItem(
-          HIJRI_CACHE_KEY,
-          JSON.stringify({ dateStr: todayStr, hijri: hijriInfo }),
-        );
-
-        if (cancelled) return;
-        setCurrentHijri(hijriInfo);
-
-        const { year: hijriYear, month: hijriMonth, day: hijriDay } = hijriInfo;
-
-        const allPromises = ISLAMIC_EVENTS.map(async (entry) => {
-          let targetYear = hijriYear;
-          if (
-            entry.hijriMonth < hijriMonth ||
-            (entry.hijriMonth === hijriMonth && entry.hijriDay < hijriDay)
-          ) {
-            targetYear = hijriYear + 1;
-          }
-
+    const controller = new AbortController();
+    const { signal } = controller;
+    const requestSignal =
+      typeof AbortSignal.any === "function"
+        ? AbortSignal.any([signal, AbortSignal.timeout(12_000)])
+        : signal;
+    const schedule = plan;
+    async function load() {
+      const resolved = await Promise.allSettled(
+        schedule.map(async ({ event, year }) => {
           const res = await fetch(
-            `${baseUrl}/hToG/${entry.hijriMonth}/${entry.hijriDay}/${targetYear}`,
+            `${baseUrl}/hToG/${event.hijriMonth}/${event.hijriDay}/${year}`,
+            { signal: requestSignal },
           );
           const data = await res.json();
-
-          if (data.code !== 200 || !data.data?.gregorian) {
-            throw new Error(`Failed to get date for ${entry.name}`);
+          const value: unknown = data.data?.gregorian?.date;
+          if (
+            !res.ok ||
+            data.code !== 200 ||
+            typeof value !== "string" ||
+            !/^\d{2}-\d{2}-\d{4}$/.test(value)
+          ) {
+            throw new Error("Invalid Islamic event date");
           }
-
-          const [rDay, rMon, rYear] = data.data.gregorian.date.split("-");
-          const date = new Date(
-            parseInt(rYear),
-            parseInt(rMon) - 1,
-            parseInt(rDay),
-          );
-
+          const [day, month, eventYear] = value.split("-").map(Number);
           return {
-            id: entry.id,
-            name: entry.name,
-            date,
-            type: entry.type,
-            emoji: entry.emoji,
-          } as IslamicEvent;
-        });
-
-        const resolved = await Promise.all(allPromises);
-        resolved.sort((a, b) => a.date.getTime() - b.date.getTime());
-
-        sessionStorage.setItem(
-          EVENTS_CACHE_PREFIX + hijriYear,
-          JSON.stringify(resolved),
-        );
-
-        if (!cancelled) {
-          setEvents(resolved);
-          setError(null);
+            id: event.id,
+            name: event.name,
+            date: new Date(eventYear, month - 1, day),
+            type: event.type,
+            emoji: event.emoji,
+          };
+        }),
+      );
+      if (signal.aborted) return;
+      const events = resolved
+        .flatMap((result) =>
+          result.status === "fulfilled" ? [result.value] : [],
+        )
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+      setResponse({ key, events });
+      if (events.length === schedule.length) {
+        try {
+          sessionStorage.setItem(key, JSON.stringify(events));
+        } catch {
+          // Events are still usable in this tab.
         }
-      } catch (e) {
-        if (!cancelled) {
-          console.error("[useIslamicEvents] Failed:", e);
-          setError("Could not load Islamic events.");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     }
+    queueMicrotask(() => {
+      if (!signal.aborted) void load();
+    });
+    return () => controller.abort();
+  }, [baseUrl, key, online, plan]);
 
-    fetchData();
-    return () => {
-      cancelled = true;
-    };
-  }, [baseUrl]);
-
-  return { currentHijri, events, loading, error };
+  const current = response?.key === key ? response : undefined;
+  return {
+    events: current?.events ?? [],
+    loading: !!plan && online && !current,
+  };
 }

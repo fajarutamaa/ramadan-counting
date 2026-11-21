@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useCountdown } from "@/hooks/useCountdown";
 import { CountdownCard } from "@/components/CountdownCard";
-import { FastingTracker } from "@/components/FastingTracker";
 import { IslamicQuotes } from "@/components/IslamicQuotes";
 import { RamadanArrived } from "@/components/RamadanArrived";
 import type { Coords } from "@/hooks/useGeolocation";
@@ -11,10 +10,7 @@ interface CountdownSectionProps {
   coords: Coords | null;
 }
 
-export function CountdownSection({
-  ramadanDate,
-  coords,
-}: CountdownSectionProps) {
+export function CountdownSection({ ramadanDate }: CountdownSectionProps) {
   const [ramadanHasArrived, setRamadanHasArrived] = useState(false);
   const timeLeft = useCountdown(ramadanDate, () => {
     setRamadanHasArrived(true);
@@ -23,7 +19,6 @@ export function CountdownSection({
   if (ramadanHasArrived) {
     return (
       <div className="space-y-6">
-        <FastingTracker coords={coords} ramadanStart={ramadanDate} />
         <RamadanArrived />
       </div>
     );
@@ -37,7 +32,6 @@ export function CountdownSection({
   ) {
     return (
       <div className="space-y-6">
-        <FastingTracker coords={coords} ramadanStart={ramadanDate} />
         <RamadanArrived />
       </div>
     );

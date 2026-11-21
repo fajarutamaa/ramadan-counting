@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { ThemeToggleDropdown } from "@/components/ThemeToggle";
+import { InstallAppButton } from "@/components/InstallAppButton";
 import { cn } from "@/lib/utils";
 
 const primary = [
@@ -165,7 +166,10 @@ export function AppNav() {
             ))}
             <MoreMenu activeId={activeId} />
           </nav>
-          <ThemeToggleDropdown />
+          <div className="flex shrink-0 items-center gap-2">
+            <InstallAppButton />
+            <ThemeToggleDropdown />
+          </div>
         </div>
       </header>
 

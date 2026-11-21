@@ -2,10 +2,20 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { CalendarDays, Moon, Star, Loader2 } from "lucide-react";
 import { fadeInUp } from "@/lib/animations";
-import { useIslamicEvents } from "@/hooks/useIslamicEvents";
+import type { IslamicEvent } from "@/hooks/useIslamicEvents";
+import type { HijriDateInfo } from "@/hooks/useHijriDates";
 
 interface IslamicCalendarProps {
-  coords: { lat: number; lon: number } | null;
+  currentHijri: HijriDateInfo | null;
+  events: IslamicEvent[];
+  loading: boolean;
+  dateUnavailable: boolean;
+  civilDate: string;
+}
+
+function eventDay(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 function formatDate(date: Date): string {
@@ -17,32 +27,35 @@ function formatDate(date: Date): string {
   });
 }
 
-export function IslamicCalendar(_props: IslamicCalendarProps) {
-  void _props;
-  const baseUrl = import.meta.env.VITE_API_BASE_URL;
-  const { currentHijri, events, loading, error } = useIslamicEvents(baseUrl);
-
-  const now = useMemo(() => new Date(), []);
-
+export function IslamicCalendar({
+  currentHijri,
+  events,
+  loading,
+  dateUnavailable,
+  civilDate,
+}: IslamicCalendarProps) {
   const upcomingEvents = useMemo(() => {
-    const future = events.filter((e) => e.date >= now);
+    const future = events.filter((e) => eventDay(e.date) >= civilDate);
     if (future.length > 0) return future;
     return events;
-  }, [events, now]);
+  }, [events, civilDate]);
 
   const nextRamadan = useMemo<Date | null>(() => {
     const ramadan = events.find((e) => e.id === "ramadan");
     return ramadan ? ramadan.date : null;
   }, [events]);
 
-  const ramadanCountdown = useMemo(() => {
-    if (!nextRamadan) return null;
-    const diff = nextRamadan.getTime() - now.getTime();
-    if (diff <= 0) return null;
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-    return { days, hours };
-  }, [nextRamadan, now]);
+  const diff =
+    nextRamadan && eventDay(nextRamadan) > civilDate
+      ? nextRamadan.getTime() - Date.now()
+      : 0;
+  const ramadanCountdown =
+    diff > 0
+      ? {
+          days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+        }
+      : null;
 
   return (
     <motion.div
@@ -61,15 +74,17 @@ export function IslamicCalendar(_props: IslamicCalendarProps) {
         </div>
 
         {/* Today's Hijri */}
-        {loading ? (
+        {!currentHijri && loading ? (
           <div className="flex items-center gap-3 py-2">
             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             <span className="text-sm text-muted-foreground">
               Loading Islamic date...
             </span>
           </div>
-        ) : error ? (
-          <p className="text-sm text-muted-foreground">{error}</p>
+        ) : dateUnavailable ? (
+          <p className="text-sm text-muted-foreground">
+            The Hijri date is not available.
+          </p>
         ) : currentHijri ? (
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center shrink-0">

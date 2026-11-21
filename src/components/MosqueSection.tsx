@@ -16,7 +16,12 @@ import { useActivity } from "@/hooks/useActivity";
 import { useFavorites } from "@/hooks/useFavorites";
 import type { Coords } from "@/hooks/useGeolocation";
 import type { NearbyMosques } from "@/hooks/useNearbyMosques";
-import { nearbyRadiusKm, searchMosques, type Mosque } from "@/lib/mosqueApi";
+import {
+  mosqueDirections,
+  nearbyRadiusKm,
+  searchMosques,
+  type Mosque,
+} from "@/lib/mosqueApi";
 import { cn } from "@/lib/utils";
 
 interface MosqueSectionProps {
@@ -25,7 +30,7 @@ interface MosqueSectionProps {
   nearby: NearbyMosques;
 }
 
-type Mode = "nearby" | "search";
+type Mode = "nearby" | "search" | "saved";
 type SearchState =
   | { status: "idle" }
   | { status: "loading" | "error"; query: string }
@@ -38,17 +43,19 @@ const secondaryButton =
 
 function MosqueDetails({
   mosque,
+  favorite,
+  onToggleFavorite,
   onClose,
 }: {
   mosque: Mosque;
+  favorite: boolean;
+  onToggleFavorite: () => void;
   onClose: () => void;
 }) {
-  const { isFavorite, toggle } = useFavorites();
-  const favorite = isFavorite(mosque.id);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">(
     "idle",
   );
-  const directions = `https://www.google.com/maps/dir/?api=1&destination=${mosque.lat},${mosque.lon}`;
+  const directions = mosqueDirections(mosque);
 
   async function copyAddress() {
     if (!mosque.address) return;
@@ -78,10 +85,8 @@ function MosqueDetails({
         <div className="flex shrink-0 gap-1">
           <button
             type="button"
-            onClick={() =>
-              toggle({ id: mosque.id, type: "mosque", label: mosque.name })
-            }
-            aria-label="Favorite"
+            onClick={onToggleFavorite}
+            aria-label={favorite ? "Remove from saved places" : "Save place"}
             aria-pressed={favorite}
             className="grid size-9 cursor-pointer place-items-center rounded-lg hover:bg-card"
           >
@@ -150,6 +155,8 @@ export function MosqueSection({
   const searchRequest = useRef<AbortController>(null);
   const list = useRef<HTMLOListElement>(null);
   const { track } = useActivity();
+  const favorites = useFavorites();
+  const saved = favorites.saved;
   const originLabel = cityName ? `Center of ${cityName}` : "Device location";
 
   useEffect(() => () => searchRequest.current?.abort(), []);
@@ -186,19 +193,47 @@ export function MosqueSection({
   function selectMosque(mosque: Mosque) {
     if (selectedId === mosque.id) return;
     setSelectedId(mosque.id);
+    favorites.rememberMosque(mosque);
     track({ type: "mosque", label: mosque.name, meta: mosque.id });
   }
 
+  const knownSearch = search.status === "success" ? search.results : noResults;
+  const { savedPlaces, oldSaves } = useMemo(() => {
+    const savedPlaces: Mosque[] = [];
+    const oldSaves: typeof saved = [];
+    const known = new Map(
+      [...(nearby.results ?? noResults), ...knownSearch].map((mosque) => [
+        mosque.id,
+        mosque,
+      ]),
+    );
+    for (const { id, label, place } of saved) {
+      const current = known.get(id);
+      if (current) savedPlaces.push({ ...current, distance: undefined });
+      else if (
+        place &&
+        Number.isFinite(place.lat) &&
+        Number.isFinite(place.lon) &&
+        Math.abs(place.lat) <= 90 &&
+        Math.abs(place.lon) <= 180
+      ) {
+        savedPlaces.push({ ...place, id, name: label });
+      } else oldSaves.push({ id, label, type: "mosque" });
+    }
+    return { savedPlaces, oldSaves };
+  }, [saved, nearby.results, knownSearch]);
   const mapped =
-    (mode === "nearby"
-      ? nearby.results
-      : search.status === "success"
-        ? search.results
-        : null) ?? noResults;
+    mode === "saved"
+      ? savedPlaces
+      : mode === "search"
+        ? knownSearch
+        : (nearby.results ?? noResults);
   const results = useMemo(
     () =>
-      mosquesOnly ? mapped.filter(({ kind }) => kind === "mosque") : mapped,
-    [mapped, mosquesOnly],
+      mode !== "saved" && mosquesOnly
+        ? mapped.filter(({ kind }) => kind === "mosque")
+        : mapped,
+    [mapped, mode, mosquesOnly],
   );
   const visible = useMemo(
     () => results.slice(0, visibleCount),
@@ -210,8 +245,13 @@ export function MosqueSection({
     [coords, mode],
   );
   const loading =
-    mode === "nearby" ? nearby.loading : search.status === "loading";
-  const failed = mode === "nearby" ? nearby.error : search.status === "error";
+    mode === "nearby"
+      ? nearby.loading
+      : mode === "search" && search.status === "loading";
+  const failed =
+    mode === "nearby"
+      ? nearby.error
+      : mode === "search" && search.status === "error";
 
   useEffect(() => {
     const container = list.current;
@@ -242,7 +282,9 @@ export function MosqueSection({
             <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
               {mode === "nearby"
                 ? `Within ${nearbyRadiusKm} km${cityName ? ` of ${cityName} city center` : " of your device location"} · straight-line distance`
-                : "Enter a mosque name or a city. Try including the city for common names."}
+                : mode === "saved"
+                  ? "Open saved places and directions without searching again."
+                  : "Enter a mosque name or a city. Try including the city for common names."}
             </p>
           </div>
           <div
@@ -250,7 +292,7 @@ export function MosqueSection({
             role="group"
             aria-label="Find places by"
           >
-            {(["nearby", "search"] as const).map((option) => (
+            {(["nearby", "search", "saved"] as const).map((option) => (
               <button
                 key={option}
                 type="button"
@@ -296,7 +338,7 @@ export function MosqueSection({
       </div>
 
       <div className="p-4 sm:p-5">
-        {mapped.length > 0 && (
+        {mode !== "saved" && mapped.length > 0 && (
           <label className="mb-3 inline-flex min-h-8 cursor-pointer items-center gap-2 text-xs font-semibold text-muted-foreground">
             <input
               type="checkbox"
@@ -332,6 +374,11 @@ export function MosqueSection({
                 <MosqueDetails
                   key={selected.id}
                   mosque={selected}
+                  favorite={favorites.isSaved(selected.id)}
+                  onToggleFavorite={() => {
+                    favorites.toggleMosque(selected);
+                    if (mode === "saved") setSelectedId(null);
+                  }}
                   onClose={() => setSelectedId(null)}
                 />
               )}
@@ -359,6 +406,19 @@ export function MosqueSection({
                       selected={selected?.id === mosque.id}
                       onSelect={selectMosque}
                     />
+                    {mode === "saved" && (
+                      <a
+                        href={mosqueDirections(mosque)}
+                        onClick={() => favorites.rememberMosque(mosque)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Directions to ${mosque.name}`}
+                        className="ml-9 inline-flex min-h-9 items-center gap-1.5 rounded-md px-3 text-xs font-semibold text-primary hover:bg-secondary"
+                      >
+                        <Navigation aria-hidden="true" className="size-3.5" />
+                        Directions
+                      </a>
+                    )}
                   </li>
                 ))}
               </ol>
@@ -376,21 +436,25 @@ export function MosqueSection({
         ) : (
           <div className="rounded-xl border border-dashed px-4 py-6 text-center">
             <p role="status" className="text-sm text-muted-foreground">
-              {loading
-                ? mode === "nearby"
-                  ? "Looking up nearby places…"
-                  : "Searching OpenStreetMap…"
-                : failed
-                  ? "The map data service didn’t respond. Please try again."
-                  : mosquesOnly && mapped.length
-                    ? "No result is identified as a mosque. Turn off the filter to see mapped prayer spaces."
-                    : mode === "nearby" && !coords
-                      ? "Choose a city or use your device location to see nearby places."
-                      : mode === "nearby"
-                        ? `No mosque or prayer space is mapped within ${nearbyRadiusKm} km. Try searching by name or city.`
-                        : search.status === "success"
-                          ? `No mapped mosque or prayer space matched “${search.query}”. Try adding a city or using the local name.`
-                          : "Search for a mosque or city to see matching places on the map."}
+              {mode === "saved"
+                ? oldSaves.length
+                  ? "Your older saves have no map pin yet."
+                  : "No saved places yet. Open a result and tap the heart to save it."
+                : loading
+                  ? mode === "nearby"
+                    ? "Looking up nearby places…"
+                    : "Searching OpenStreetMap…"
+                  : failed
+                    ? "The map data service didn’t respond. Please try again."
+                    : mosquesOnly && mapped.length
+                      ? "No result is identified as a mosque. Turn off the filter to see mapped prayer spaces."
+                      : mode === "nearby" && !coords
+                        ? "Choose a city or use your device location to see nearby places."
+                        : mode === "nearby"
+                          ? `No mosque or prayer space is mapped within ${nearbyRadiusKm} km. Try searching by name or city.`
+                          : search.status === "success"
+                            ? `No mapped mosque or prayer space matched “${search.query}”. Try adding a city or using the local name.`
+                            : "Search for a mosque or city to see matching places on the map."}
             </p>
             {mode === "nearby" && !loading && (
               <div className="mt-3 flex flex-wrap justify-center gap-2">
@@ -418,7 +482,58 @@ export function MosqueSection({
                 </button>
               </div>
             )}
+            {mode === "saved" && !oldSaves.length && (
+              <button
+                type="button"
+                className={`${secondaryButton} mt-3`}
+                onClick={() => changeMode("search")}
+              >
+                Find a place
+              </button>
+            )}
           </div>
+        )}
+        {mode === "saved" && oldSaves.length > 0 && (
+          <ul
+            aria-label="Saved places without map pins"
+            className="mt-3 divide-y rounded-xl border"
+          >
+            {oldSaves.map(({ id, label }) => (
+              <li
+                key={id}
+                className="flex flex-wrap items-center justify-between gap-2 p-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold wrap-break-word">
+                    {label}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    No saved coordinates.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className={secondaryButton}
+                    onClick={() => {
+                      setQuery(label);
+                      changeMode("search");
+                    }}
+                  >
+                    Find again
+                  </button>
+                  <button
+                    type="button"
+                    className={secondaryButton}
+                    onClick={() => favorites.removeMosque(id)}
+                    aria-label={`Remove ${label}`}
+                  >
+                    <X aria-hidden="true" className="size-3.5" />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
         <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
           Data from{" "}

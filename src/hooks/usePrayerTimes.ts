@@ -1,45 +1,118 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Coords } from "./useGeolocation";
-
-const prayerNames = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"] as const;
-
-type Timings = Record<(typeof prayerNames)[number], string>;
+import {
+  adjustPrayerTimes,
+  fetchPrayerDay,
+  loadPrayerCache,
+  persistPrayerCache,
+  prayerDayKey,
+  savePrayerDay,
+  shiftPrayerDate,
+  type PrayerName,
+  type PrayerPlace,
+  type PrayerSettings,
+} from "@/lib/prayerSchedule";
 
 export interface PrayerTime {
-  name: string;
+  name: PrayerName;
   time: string;
+  dayOffset: number;
   isCurrent: boolean;
   isNext: boolean;
 }
 
-export interface PrayerTimesData {
+interface PrayerDay {
+  date: string;
   times: PrayerTime[];
-  nextPrayer: { name: string; time: string | null } | null;
-  minutesUntilNext: number | null;
   loading: boolean;
-  error: string | null;
+  fromCache: boolean;
 }
 
-function minutesOfDay(time: string) {
-  const [hours, minutes] = time.split(":").map(Number);
-  return hours * 60 + minutes;
+export interface PrayerTimesData {
+  activePlace: Omit<PrayerPlace, "label"> | null;
+  today: PrayerDay;
+  tomorrow: PrayerDay;
+  location: string | null;
+  timeZone: string;
+  usingLastDevice: boolean;
+  online: boolean;
+  canRefresh: boolean;
+  retry: () => void;
+  currentPrayer: Pick<PrayerTime, "name" | "time"> | undefined;
+  nextPrayer: { name: PrayerName; time: string | null } | null;
+  minutesUntilNext: number | null;
+}
+
+interface Options {
+  settings: PrayerSettings;
+  cityName?: string;
+  cityTimeZone?: string;
+  deviceLabel?: string;
 }
 
 export function usePrayerTimes(
   coords: Coords | null,
-  timeZone?: string,
+  { settings, cityName, cityTimeZone, deviceLabel }: Options,
 ): PrayerTimesData {
   const [now, setNow] = useState(() => new Date());
+  const [online, setOnline] = useState(() => navigator.onLine);
+  const [cache, setCache] = useState(loadPrayerCache);
+  const [retryCount, setRetryCount] = useState(0);
+  const [request, setRequest] = useState<{
+    key: string;
+    received: Record<string, boolean>;
+  } | null>(null);
+
   useEffect(() => {
-    const refresh = () => setNow(new Date());
-    const timer = window.setInterval(refresh, 10_000);
-    document.addEventListener("visibilitychange", refresh);
+    const refreshTime = () => setNow(new Date());
+    const refreshConnection = () => {
+      refreshTime();
+      setOnline(navigator.onLine);
+    };
+    const timer = window.setInterval(refreshTime, 10_000);
+    document.addEventListener("visibilitychange", refreshConnection);
+    window.addEventListener("online", refreshConnection);
+    window.addEventListener("offline", refreshConnection);
     return () => {
       window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", refresh);
+      document.removeEventListener("visibilitychange", refreshConnection);
+      window.removeEventListener("online", refreshConnection);
+      window.removeEventListener("offline", refreshConnection);
     };
   }, []);
 
+  const deviceTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  // Use consistent precision for cache keys and don't store exact GPS fixes.
+  const lat = coords ? Number(coords.lat.toFixed(3)) : null;
+  const lon = coords ? Number(coords.lon.toFixed(3)) : null;
+  const activePlace = useMemo(
+    () =>
+      lat === null || lon === null
+        ? null
+        : { lat, lon, timeZone: cityTimeZone ?? deviceTimeZone },
+    [lat, lon, cityTimeZone, deviceTimeZone],
+  );
+  const usingLastDevice =
+    activePlace === null && !cityName && cache.lastDevice !== null;
+  const place = activePlace ?? (usingLastDevice ? cache.lastDevice : null);
+  const timeZone = place?.timeZone ?? deviceTimeZone;
+  const lastDevice = cache.lastDevice;
+  const rememberedLabel =
+    activePlace &&
+    lastDevice?.lat === activePlace.lat &&
+    lastDevice.lon === activePlace.lon &&
+    lastDevice.timeZone === activePlace.timeZone
+      ? lastDevice.label
+      : undefined;
+  const location = activePlace
+    ? cityName ||
+      deviceLabel ||
+      rememberedLabel ||
+      `${activePlace.lat.toFixed(3)}, ${activePlace.lon.toFixed(3)}`
+    : usingLastDevice
+      ? (lastDevice?.label ?? null)
+      : null;
+  const method = settings.method;
   const clock = useMemo(
     () =>
       new Intl.DateTimeFormat("en-GB", {
@@ -56,84 +129,159 @@ export function usePrayerTimes(
   const parts = Object.fromEntries(
     clock.formatToParts(now).map(({ type, value }) => [type, value]),
   );
-  const date = `${parts.day}-${parts.month}-${parts.year}`;
+  const date = `${parts.year}-${parts.month}-${parts.day}`;
+  const tomorrowDate = shiftPrayerDate(date, 1);
+  const yesterdayDate = shiftPrayerDate(date, -1);
   const minutes = Number(parts.hour) * 60 + Number(parts.minute);
-  const url = useMemo(() => {
-    if (!coords) return null;
-    const params = new URLSearchParams({
-      latitude: String(coords.lat),
-      longitude: String(coords.lon),
-      method: "2",
-    });
-    if (timeZone) params.set("timezonestring", timeZone);
-    return `https://api.aladhan.com/v1/timings/${date}?${params}`;
-  }, [coords, date, timeZone]);
-  const [response, setResponse] = useState<{
-    url: string;
-    timings?: Timings;
-    error?: string;
-  } | null>(null);
+  const todayKey = place ? prayerDayKey(place, date, method) : null;
+  const tomorrowKey = place ? prayerDayKey(place, tomorrowDate, method) : null;
+  const yesterdayKey = place
+    ? prayerDayKey(place, yesterdayDate, method)
+    : null;
+  const requestKey =
+    activePlace && todayKey ? `${todayKey}:${retryCount}` : null;
+  const todaySaved = todayKey ? cache.days[todayKey] : undefined;
+  const tomorrowSaved = tomorrowKey ? cache.days[tomorrowKey] : undefined;
+  const yesterdaySaved = yesterdayKey ? cache.days[yesterdayKey] : undefined;
 
   useEffect(() => {
-    if (!url) return;
+    if (!activePlace || !online || !requestKey) return;
     const controller = new AbortController();
-    async function load(requestUrl: string) {
+    const { signal } = controller;
+    const placeForRequest = activePlace;
+    const batch = requestKey;
+    function finish(day: string, received: boolean) {
+      setRequest((previous) => ({
+        key: batch,
+        received: {
+          ...(previous?.key === batch ? previous.received : {}),
+          [day]: received,
+        },
+      }));
+    }
+    async function load(day: string) {
       try {
-        const res = await fetch(requestUrl, { signal: controller.signal });
-        const data = await res.json();
-        const timings: Timings | undefined = data.data?.timings;
-        if (
-          !res.ok ||
-          data.code !== 200 ||
-          !timings ||
-          !prayerNames.every((name) => /^\d{2}:\d{2}$/.test(timings[name]))
-        ) {
-          throw new Error("Invalid prayer schedule");
-        }
-        if (!controller.signal.aborted)
-          setResponse({ url: requestUrl, timings });
+        const timings = await fetchPrayerDay(
+          placeForRequest,
+          day,
+          method,
+          signal,
+        );
+        if (signal.aborted) return;
+        setCache((previous) =>
+          savePrayerDay(
+            previous,
+            prayerDayKey(placeForRequest, day, method),
+            timings,
+          ),
+        );
+        finish(day, true);
       } catch {
-        if (!controller.signal.aborted)
-          setResponse({
-            url: requestUrl,
-            error: "Failed to fetch prayer times",
-          });
+        if (!signal.aborted) finish(day, false);
       }
     }
-    void load(url);
+    queueMicrotask(() => {
+      if (signal.aborted) return;
+      void load(date);
+      void load(tomorrowDate);
+    });
     return () => controller.abort();
-  }, [url]);
+  }, [activePlace, online, requestKey, date, tomorrowDate, method]);
 
-  const schedule = response?.url === url ? response : null;
-  const timings = schedule?.timings;
-  if (!timings) {
+  // Remember the device location only if we have a timetable for it. Update
+  // the label when reverse geocoding finishes without restarting the fetch.
+  useEffect(() => {
+    if (
+      !activePlace ||
+      cityName ||
+      !location ||
+      (!todaySaved && !tomorrowSaved)
+    )
+      return;
+    setCache((previous) => {
+      const { lastDevice } = previous;
+      return lastDevice?.lat === activePlace.lat &&
+        lastDevice.lon === activePlace.lon &&
+        lastDevice.timeZone === activePlace.timeZone &&
+        lastDevice.label === location
+        ? previous
+        : { ...previous, lastDevice: { ...activePlace, label: location } };
+    });
+  }, [activePlace, cityName, location, todaySaved, tomorrowSaved]);
+
+  useEffect(() => persistPrayerCache(cache), [cache]);
+
+  const todayTimes = todaySaved
+    ? adjustPrayerTimes(todaySaved.timings, settings.offsets)
+    : [];
+  const tomorrowTimes = tomorrowSaved
+    ? adjustPrayerTimes(tomorrowSaved.timings, settings.offsets)
+    : [];
+  // A manual adjustment can move a prayer across midnight. Keep its source
+  // date on the timetable while using its actual wall-clock day for highlights.
+  const yesterdaySpill = yesterdaySaved
+    ? adjustPrayerTimes(yesterdaySaved.timings, settings.offsets)
+        .filter(({ position }) => position >= 1440)
+        .map((entry) => ({
+          ...entry,
+          date: yesterdayDate,
+          position: entry.position - 1440,
+        }))
+    : [];
+  const occurrences = todaySaved
+    ? [
+        ...yesterdaySpill,
+        ...todayTimes.map((entry) => ({ ...entry, date })),
+        ...tomorrowTimes.map((entry) => ({
+          ...entry,
+          date: tomorrowDate,
+          position: entry.position + 1440,
+        })),
+      ].sort((a, b) => a.position - b.position)
+    : [];
+  const next = occurrences.find((entry) => entry.position > minutes);
+  const current = occurrences
+    .filter((entry) => entry.position <= minutes)
+    .at(-1);
+  const canRefresh = !!activePlace && online;
+  const received = request?.key === requestKey ? request?.received : undefined;
+
+  function buildDay(day: string, entries: typeof todayTimes): PrayerDay {
     return {
-      times: [],
-      nextPrayer: null,
-      minutesUntilNext: null,
-      loading: !!url && !schedule,
-      error: schedule?.error ?? null,
+      date: day,
+      times: entries.map(({ name, time, dayOffset }) => ({
+        name,
+        time,
+        dayOffset,
+        isCurrent: current?.date === day && current.name === name,
+        isNext: next?.date === day && next.name === name,
+      })),
+      fromCache:
+        entries.length > 0 && (!canRefresh || received?.[day] !== true),
+      loading:
+        entries.length === 0 && canRefresh && received?.[day] === undefined,
     };
   }
 
-  const nextIndex = prayerNames.findIndex(
-    (name) => minutesOfDay(timings[name]) > minutes,
-  );
-  const currentIndex =
-    nextIndex === -1 ? prayerNames.length - 1 : nextIndex - 1;
-  const nextName = prayerNames[Math.max(0, nextIndex)];
-  const nextTime = nextIndex === -1 ? null : timings[nextName];
-
   return {
-    times: prayerNames.map((name, index) => ({
-      name,
-      time: timings[name],
-      isCurrent: index === currentIndex,
-      isNext: index === nextIndex,
-    })),
-    nextPrayer: { name: nextName, time: nextTime },
-    minutesUntilNext: nextTime ? minutesOfDay(nextTime) - minutes : null,
-    loading: false,
-    error: null,
+    activePlace,
+    today: buildDay(date, todayTimes),
+    tomorrow: buildDay(tomorrowDate, tomorrowTimes),
+    location,
+    timeZone,
+    usingLastDevice,
+    online,
+    canRefresh,
+    retry: () => setRetryCount((count) => count + 1),
+    currentPrayer: current
+      ? { name: current.name, time: current.time }
+      : undefined,
+    nextPrayer: next
+      ? { name: next.name, time: next.time }
+      : todaySaved
+        ? { name: "Fajr", time: null }
+        : null,
+    minutesUntilNext:
+      next && next.position < 1440 ? next.position - minutes : null,
   };
 }
